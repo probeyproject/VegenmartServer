@@ -1,15 +1,16 @@
 import db from '../db/db.js';
 
-export const createBusinessModel = async (firstName, lastName, email, phone, address, message) => {
+export const createBusinessModel = async (firstName, lastName, email, phone, address, message, product_image) => {
     try {
-        const query = 'INSERT INTO businesses (first_name,last_name,email,phone_number,address,message) VALUES (?,?,?,?,?,?)';
-        const [result] = await db.query(query, [firstName, lastName, email, phone, address, message]);
-        result.length === 0 ? null : result;
+        const query = 'INSERT INTO businesses (first_name, last_name, email, phone_number, address, message, product_image) VALUES (?, ?, ?, ?, ?, ?, ?)';
+        const [result] = await db.query(query, [firstName, lastName, email, phone, address, message, product_image]);
+        return result; // Ensure the result is returned
     } catch (error) {
-        console.log('business model', error);
+        console.log('business model error:', error);
         throw new Error("DB Model Error");
     }
-}
+};
+
 
 export const getAllBusinessModel = async () => {
     try {

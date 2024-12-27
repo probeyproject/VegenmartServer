@@ -21,7 +21,7 @@ app.use(cors({
   origin: ['https://www.vegenmart.com','https://vegenmart.com','https://admin.vegenmart.com','http://localhost:3000','http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true 
 }));
 
 // routes
