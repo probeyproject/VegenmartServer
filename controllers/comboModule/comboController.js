@@ -1,28 +1,88 @@
 import { createcombo,getAllCombos,getComboById,updateCombo,deleteCombo } from "../../models/comboModel.js";
 
-// Controller function for creating a combo
+import cloudinary from "cloudinary";
+import fs from "fs";
+import path from "path";
+import Jimp from "jimp";
+ // Ensure Cloudinary is configured
+
 export const createModel = async (req, res) => {
-  const { product_id, price, title, description } = req.body;
-
-  // Validate required fields
-  if (!product_id ||!price || !title || !description) {
-    return res.status(400).json({ Message: "All fields are required!" });
-  }
-
   try {
-    // Call the model function to insert into the database
-    const result = await createcombo(product_id,price, title, description);
+    const { product_id, price, title, description } = req.body;
 
-    if (!result) {
-      return res.status(500).json({ Message: "Failed to add combo!" });
+    // Validate required fields
+    if (!product_id || !price || !title || !description) {
+      return res.status(400).json({ message: "All fields are required!" });
     }
 
-    return res.status(200).json({ Message: "Combo added successfully!" });
+    const uploadedFiles = req.files;
+    if (!uploadedFiles || uploadedFiles.length === 0) {
+      return res.status(400).json({ message: "No images uploaded!" });
+    }
+
+    // Process and handle images
+    const processedImages = [];
+    for (const file of uploadedFiles) {
+      const fileExtension = path.extname(file.originalname).toLowerCase();
+
+      if (fileExtension === ".webp") {
+        // Directly use WebP images without processing
+        processedImages.push(file.path);
+      } else {
+        // Resize and compress images using Jimp
+        const image = await Jimp.read(file.path);
+
+        // Resize to a max width of 1024px while maintaining aspect ratio
+        image.resize(1024, Jimp.AUTO);
+
+        // Set image quality to 80% for compression
+        image.quality(80);
+
+        // Save the processed image to a temporary file
+        const processedImagePath = `./temp/${Date.now()}-${file.originalname}`;
+        await image.writeAsync(processedImagePath);
+
+        processedImages.push(processedImagePath);
+      }
+    }
+
+    // Upload processed images to Cloudinary
+    const uploadPromises = processedImages.map((filePath) =>
+      cloudinary.uploader.upload(filePath, {
+        folder: "combo_images",
+        public_id: `${Date.now()}-${path.basename(filePath)}`,
+      })
+    );
+
+    const uploadResults = await Promise.all(uploadPromises);
+    const imageUrls = uploadResults.map((result) => result.secure_url);
+
+    // Clean up temporary files
+    processedImages.forEach((filePath) => fs.unlinkSync(filePath));
+
+    // Save combo to the database
+    const result = await createcombo(
+      product_id,
+      price,
+      title,
+      imageUrls.join(","),
+      description
+    );
+
+    if (!result) {
+      return res.status(500).json({ message: "Failed to add combo!" });
+    }
+
+    res.status(200).json({
+      message: "Combo added successfully!",
+      data: result,
+    });
   } catch (error) {
-    console.error("Error adding combo:", error.message);
-    return res.status(500).json({ Message: `Internal server error: ${error.message}` });
+    console.error("Error adding combo:", error);
+    res.status(500).json({ message: `Internal server error: ${error.message}` });
   }
 };
+
 
 
 export const getAllCombosController = async (req, res) => {
@@ -60,22 +120,76 @@ export const getAllCombosController = async (req, res) => {
   
     // Validate required fields
     if (!product_id || !price || !title || !description) {
-      return res.status(400).json({ Message: "All fields are required!" });
+      return res.status(400).json({ message: "All fields are required!" });
     }
   
     try {
-      const success = await updateCombo(id, product_id, price, title, description);
+      // Check if images are uploaded
+      const uploadedFiles = req.files;
+      let imageUrls = [];
+      
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        const processedImages = [];
+        for (const file of uploadedFiles) {
+          const fileExtension = path.extname(file.originalname).toLowerCase();
   
-      if (!success) {
-        return res.status(404).json({ Message: "Combo not found or update failed!" });
+          if (fileExtension === ".webp") {
+            // Directly use WebP images without processing
+            processedImages.push(file.path);
+          } else {
+            // Resize and compress images using Jimp
+            const image = await Jimp.read(file.path);
+  
+            // Resize to a max width of 1024px while maintaining aspect ratio
+            image.resize(1024, Jimp.AUTO);
+  
+            // Set image quality to 80% for compression
+            image.quality(80);
+  
+            // Save the processed image to a temporary file
+            const processedImagePath = `./temp/${Date.now()}-${file.originalname}`;
+            await image.writeAsync(processedImagePath);
+  
+            processedImages.push(processedImagePath);
+          }
+        }
+  
+        // Upload processed images to Cloudinary
+        const uploadPromises = processedImages.map((filePath) =>
+          cloudinary.uploader.upload(filePath, {
+            folder: "combo_images",
+            public_id: `${Date.now()}-${path.basename(filePath)}`,
+          })
+        );
+  
+        const uploadResults = await Promise.all(uploadPromises);
+        imageUrls = uploadResults.map((result) => result.secure_url);
+  
+        // Clean up temporary files
+        processedImages.forEach((filePath) => fs.unlinkSync(filePath));
       }
   
-      return res.status(200).json({ Message: "Combo updated successfully!" });
+      // Update combo in the database
+      const success = await updateCombo(
+        id,
+        product_id,
+        price,
+        title,
+        imageUrls.join(","),
+        description
+      );
+  
+      if (!success) {
+        return res.status(404).json({ message: "Combo not found or update failed!" });
+      }
+  
+      return res.status(200).json({ message: "Combo updated successfully!" });
     } catch (error) {
       console.error("Error updating combo:", error.message);
-      return res.status(500).json({ Message: `Internal server error: ${error.message}` });
+      return res.status(500).json({ message: `Internal server error: ${error.message}` });
     }
   };
+  
 
   
   export const deleteComboController = async (req, res) => {

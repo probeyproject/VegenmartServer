@@ -6,13 +6,13 @@ import {
   updateComboController,
   deleteComboController,
 } from "../controllers/comboModule/comboController.js";
-
+import upload from "../config/multer.js";
 const router = express.Router();
 
-router.post("/createCombo", createModel); 
+router.post("/createCombo", upload.array("product_image"),createModel); 
 router.get("/getAllCombos", getAllCombosController); 
 router.get("/getCombo/:id", getComboByIdController); 
-router.put("/updateCombo/:id", updateComboController); 
+router.put("/updateCombo/:id", upload.array("product_image"), updateComboController); 
 router.delete("/deleteCombo/:id", deleteComboController); 
 
 export default router;

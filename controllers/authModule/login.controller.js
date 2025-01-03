@@ -32,7 +32,7 @@ export const login=async(req,res)=>{
                         httpOnly:true,
                     }).status(200).json({
                         message: 'Login successful',
-                        // token,
+                        token,
                         user: {
                             id: user.id,
                             email: user.email,

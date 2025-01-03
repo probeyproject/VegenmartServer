@@ -10,6 +10,7 @@ import dotenv from "dotenv";
 import db from "../../db/db.js";
 dotenv.config();
 import jwt from "jsonwebtoken";
+import axios from "axios";
 import { addWalletReward, createUser, getUserByReferralCode, sendOtpModel } from "../../models/signup.model.js";
 
 export const signUp = async (req, res) => {
@@ -21,9 +22,9 @@ export const signUp = async (req, res) => {
   if (!firstName || !lastName || !email || !password || !role || !phone) {
     return res.status(400).json({ message: "All fields required" });
   }
-  if (!profilePic) {
-    return res.status(400).json({ message: "Profile image not uploaded" });
-  }
+  // if (!profilePic) {
+  //   return res.status(400).json({ message: "Profile image not uploaded" });
+  // }
 
   try {
     let profileUrl;
@@ -84,14 +85,60 @@ export const signUp = async (req, res) => {
   }
 };
 
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+// const client = twilio(
+//   process.env.TWILIO_ACCOUNT_SID,
+//   process.env.TWILIO_AUTH_TOKEN
+// );
 
-let otpStorage = {};
+// let otpStorage = {};
 
-// Generate and send OTP
+// // Generate and send OTP
+// // export const sendOtp = async (req, res) => {
+// //   let { phoneNumber } = req.body;
+
+// //   // Prepend country code if not present
+// //   if (!phoneNumber.startsWith("+91")) {
+// //     phoneNumber = "+91" + phoneNumber;
+// //   }
+
+// //   // Generate a random 6-digit OTP
+// //   const otp = Math.floor(100000 + Math.random() * 900000).toString();
+// //   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP valid for 5 minutes
+
+// //   try {
+// //     // Send OTP via SMS
+// //     await client.messages.create({
+// //       body: `Your OTP code is ${otp}.`,
+// //       from: process.env.TWILIO_PHONE_NUMBER,
+// //       to: phoneNumber,
+// //     });
+
+// //     // Store OTP in the database
+// //     await db.query(
+// //       "INSERT INTO otps (phone_number, otp, expires_at) VALUES (?, ?, ?)",
+// //       [phoneNumber, otp, expiresAt]
+// //     );
+
+// //     const [result] = await db.query("select phone from users where phone=?", [
+// //       phoneNumber,
+// //     ]);
+// //     if (result.length === 0) {
+// //       await db.query("insert into users (phone) values (?)", [phoneNumber]);
+// //     }
+
+// //     return res.status(200).json({ message: "OTP sent successfully!" });
+// //   } catch (error) {
+// //     console.log(error);
+// //     return res.status(500).json({ error: "Failed to send OTP" });
+// //   }
+// // };
+
+
+
+
+
+// // Today Work hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+// // Generate and send OTP with Referral Code generation
 // export const sendOtp = async (req, res) => {
 //   let { phoneNumber } = req.body;
 
@@ -105,7 +152,7 @@ let otpStorage = {};
 //   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP valid for 5 minutes
 
 //   try {
-//     // Send OTP via SMS
+//     // Send OTP via SMS (Use your Twilio or other SMS provider)
 //     await client.messages.create({
 //       body: `Your OTP code is ${otp}.`,
 //       from: process.env.TWILIO_PHONE_NUMBER,
@@ -118,11 +165,21 @@ let otpStorage = {};
 //       [phoneNumber, otp, expiresAt]
 //     );
 
-//     const [result] = await db.query("select phone from users where phone=?", [
+//     // Check if the user already exists in the users table
+//     const [existingUser] = await db.query("select phone from users where phone=?", [
 //       phoneNumber,
 //     ]);
-//     if (result.length === 0) {
-//       await db.query("insert into users (phone) values (?)", [phoneNumber]);
+
+//     // If user does not exist, create a new user and generate a referral code
+//     if (existingUser.length === 0) {
+//       // Generate a unique referral code (could be alphanumeric or a combination)
+//       const referralCode = generateReferralCode();
+
+//       // Insert new user with phone and referral code
+//       await db.query(
+//         "INSERT INTO users (phone, referral_code) VALUES (?, ?)",
+//         [phoneNumber, referralCode]
+//       );
 //     }
 
 //     return res.status(200).json({ message: "OTP sent successfully!" });
@@ -132,12 +189,21 @@ let otpStorage = {};
 //   }
 // };
 
+// // Function to generate a unique referral code
+// const generateReferralCode = () => {
+//   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+//   let referralCode = '';
+//   for (let i = 0; i < 6; i++) {
+//     const randomIndex = Math.floor(Math.random() * chars.length);
+//     referralCode += chars[randomIndex];
+//   }
+//   return referralCode;
+// };
 
 
 
 
-// Today Work hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
-// Generate and send OTP with Referral Code generation
+
 export const sendOtp = async (req, res) => {
   let { phoneNumber } = req.body;
 
@@ -151,12 +217,21 @@ export const sendOtp = async (req, res) => {
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP valid for 5 minutes
 
   try {
-    // Send OTP via SMS (Use your Twilio or other SMS provider)
-    await client.messages.create({
-      body: `Your OTP code is ${otp}.`,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: phoneNumber,
+    // Send OTP via SMS Alert using Axios
+    const response = await axios.get("https://www.smsalert.co.in/api/push.json", {
+      params: {
+        user: process.env.SMS_ALERT_USERNAME, // SMS Alert username
+        password: process.env.SMS_ALERT_PASSWORD, // SMS Alert password
+        sender: "CVDEMO", // Replace with your approved sender ID
+        mobile: phoneNumber,
+        text: `Your OTP code is ${otp}.`,
+        // template_id: "1", 
+      },
     });
+
+    if (response.data.status !== "success") {
+      throw new Error("Failed to send OTP via SMS Alert");
+    }
 
     // Store OTP in the database
     await db.query(
@@ -165,16 +240,13 @@ export const sendOtp = async (req, res) => {
     );
 
     // Check if the user already exists in the users table
-    const [existingUser] = await db.query("select phone from users where phone=?", [
+    const [existingUser] = await db.query("SELECT phone FROM users WHERE phone = ?", [
       phoneNumber,
     ]);
 
     // If user does not exist, create a new user and generate a referral code
     if (existingUser.length === 0) {
-      // Generate a unique referral code (could be alphanumeric or a combination)
       const referralCode = generateReferralCode();
-
-      // Insert new user with phone and referral code
       await db.query(
         "INSERT INTO users (phone, referral_code) VALUES (?, ?)",
         [phoneNumber, referralCode]
@@ -183,15 +255,15 @@ export const sendOtp = async (req, res) => {
 
     return res.status(200).json({ message: "OTP sent successfully!" });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ error: "Failed to send OTP" });
+    console.error(error);
+    return res.status(500).json({ error:error.message });
   }
 };
 
 // Function to generate a unique referral code
 const generateReferralCode = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let referralCode = '';
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let referralCode = "";
   for (let i = 0; i < 6; i++) {
     const randomIndex = Math.floor(Math.random() * chars.length);
     referralCode += chars[randomIndex];
@@ -248,21 +320,6 @@ export const signupUser = async (req, res) => {
     return res.status(500).json({ error: "Something went wrong during signup." });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
