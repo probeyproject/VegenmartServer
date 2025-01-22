@@ -49,17 +49,17 @@ export const createCart = async (req, res) => {
       });
     }
 
-    if (result.error === "Invalid productId") {
-      return res.status(400).json({
-        message: "Invalid productId. Please provide a valid product ID."
-      });
-    }
+    // if (result.error === "Invalid productId") {
+    //   return res.status(400).json({
+    //     message: "Invalid productId. Please provide a valid product ID."
+    //   });
+    // }
 
-    if (result.error === "Invalid combo_id") {
-      return res.status(400).json({
-        message: "Invalid combo_id. Please provide a valid combo ID."
-      });
-    }
+    // if (result.error === "Invalid combo_id") {
+    //   return res.status(400).json({
+    //     message: "Invalid combo_id. Please provide a valid combo ID."
+    //   });
+    // }
 
     if (!result) {
       return res.status(400).json({ message: "Cart not created!" });
