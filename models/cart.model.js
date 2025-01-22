@@ -3,36 +3,55 @@ import db from "../db/db.js";
 export const createCartModel = async (
   userId,
   productId,
+  combo_id,
   totalPrice,
   quantity,
   cartStatus,
   weight,
-  weight_type
+  weight_type,
+  final_price
 ) => {
   try {
+    // Validate if user exists
     const checkUserQuery = "SELECT * FROM users WHERE id = ?";
     const [userExists] = await db.query(checkUserQuery, [userId]);
     if (userExists.length === 0) {
       return { error: "Invalid userId" };
     }
 
-    const checkProductQuery = "SELECT * FROM product WHERE product_id = ?";
-    const [productExists] = await db.query(checkProductQuery, [productId]);
-    if (productExists.length === 0) {
-      return { error: "Invalid productId" };
+    // Validate product or combo based on availability
+    if (productId) {
+      const checkProductQuery = "SELECT * FROM product WHERE product_id = ?";
+      const [productExists] = await db.query(checkProductQuery, [productId]);
+      if (productExists.length === 0) {
+        return { error: "Invalid productId" };
+      }
+    } else if (combo_id) {
+      const checkComboQuery = "SELECT * FROM combos WHERE combo_id = ?";
+      const [comboExists] = await db.query(checkComboQuery, [combo_id]);
+      if (comboExists.length === 0) {
+        return { error: "Invalid combo_id" };
+      }
+    } else {
+      return { error: "Either productId or combo_id must be provided." };
     }
 
-    const query =
-      "INSERT INTO carts (user_id,product_id,total_price,quantity,cart_status,weight,weight_type) VALUES (?,?,?,?,?,?,?)";
-
+    // Insert into carts table
+    const query = `
+      INSERT INTO carts 
+      (user_id, product_id, combo_id, total_price, quantity, cart_status, weight, weight_type, final_price) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
     const [results] = await db.query(query, [
       userId,
-      productId,
-      totalPrice,
-      quantity,
-      cartStatus,
-      weight,
-      weight_type
+      productId || null, // Use null if productId is not provided
+      combo_id || null,  // Use null if combo_id is not provided
+      totalPrice || 0,
+      quantity || 1,
+      cartStatus || null,
+      weight || 0,
+      weight_type || null,
+      final_price || 0
     ]);
 
     return results.length === 0 ? null : results;
@@ -41,6 +60,7 @@ export const createCartModel = async (
     throw new Error(`CartModel DB error ${error.message}`);
   }
 };
+
 
 export const updateCartModel = async (
   userId,
@@ -170,13 +190,23 @@ export const getCardByIdModel = async (cartId) => {
   }
 };
 
+
 export const getAllCardByUserIdModel = async (userId) => {
   try {
     const query = `
-      SELECT carts.*, product.product_image,product.product_name,product.product_price
-      FROM carts 
-      JOIN product ON carts.product_id = product.product_id 
+      SELECT 
+        carts.*, 
+        COALESCE(product.product_name, combos.title) AS product_name,
+        COALESCE(product.product_image, combos.product_image) AS product_image,
+        COALESCE(product.product_price, combos.price) AS product_price,
+        COALESCE(carts.weight, 'Kg') AS weight,
+        COALESCE(carts.weight_type, '') AS weight_type,
+        COALESCE(carts.total_price, 0) AS total_price
+      FROM carts
+      LEFT JOIN product ON carts.product_id = product.product_id
+      LEFT JOIN combos ON carts.combo_id = combos.combo_id
       WHERE carts.user_id = ?`;
+
     const [result] = await db.query(query, [userId]);
     return result.length === 0 ? null : result;
   } catch (error) {
@@ -184,6 +214,10 @@ export const getAllCardByUserIdModel = async (userId) => {
     throw new Error(`CartModel DB error ${error.message}`);
   }
 };
+
+
+
+
 
 export const deleteCartByIdModel = async (cartId) => {
   try {
