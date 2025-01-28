@@ -58,7 +58,7 @@ export const getAllCategoryModel = async () => {
           product.product_id, 
           categories.category_name, 
           price.price_id
-        LIMIT 8
+        LIMIT 15
       `;
   
       const [result] = await db.query(query, [categoryId]);
@@ -102,6 +102,84 @@ export const getAllCategoryModel = async () => {
     } catch (error) {
       console.log(error);
       throw new Error(`Category Model DB error ${error.message}`);
+    }
+  };
+
+
+  export const getCategoryBynameModel = async (categoryName) => {
+    try {
+      // SQL query to fetch products by category name, including category details
+      const query = `
+        SELECT 
+          product.product_id, 
+          product.product_name, 
+          product.product_price,  
+          product.weight, 
+          product.product_image,  
+          product.category_id,  
+          product.discount_price, 
+          product.weight_type,
+          product.stock, 
+          AVG(reviews.rating) AS average_rating,
+          price.min_weight,
+          price.max_weight,
+          price.discount_price AS offer_discount_price,
+          categories.category_name
+        FROM 
+          product
+        LEFT JOIN 
+          categories ON product.category_id = categories.category_id
+        LEFT JOIN 
+          reviews ON product.product_id = reviews.product_id
+        LEFT JOIN 
+          price ON product.product_id = price.product_id
+        WHERE 
+          categories.category_name = ?  -- Filter by category name
+        GROUP BY 
+          product.product_id, 
+          categories.category_name, 
+          price.price_id
+        LIMIT 15;
+      `;
+  
+      // Execute the query using the provided categoryName
+      const [result] = await db.query(query, [categoryName]);
+  
+      // Process the result to group price offers by product
+      const products = {};
+  
+      result.forEach((row) => {
+        // If product is not already in the products object, add it
+        if (!products[row.product_id]) {
+          products[row.product_id] = {
+            product_id: row.product_id,
+            product_name: row.product_name,
+            product_price: row.product_price,
+            weight: row.weight,
+            product_image: row.product_image ? [row.product_image] : [],
+            category_id: row.category_id,
+            discount_price: row.discount_price,
+            weight_type: row.weight_type,
+            stock: row.stock,
+            category_name: row.category_name,
+            average_rating: row.average_rating,
+            offers: [] // Initialize offers array
+          };
+        }
+  
+        // Add the offer to the product's offers array
+        products[row.product_id].offers.push({
+          min_weight: row.min_weight,
+          max_weight: row.max_weight,
+          discount_price: row.offer_discount_price
+        });
+      });
+  
+      // Convert products object to an array and return
+      return Object.values(products);
+    } catch (error) {
+      console.error("Error in getCategoryByNameModel:", error);
+      throw new Error(`Category Model DB error: ${error.message}`);
     }
   };
   

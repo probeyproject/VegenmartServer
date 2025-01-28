@@ -1,5 +1,5 @@
 import express from 'express';
-import { createCategory, deleteCategoryById, editCategoryById, getAllCategory, getAllProductByCategory, getAllProductByCategoryName, getCategoryById } from '../controllers/categoryModule/category.controller.js';
+import { createCategory, deleteCategoryById, editCategoryById, getAllCategory, getAllProductByCategory, getAllProductByCategoryName, getCategoryById, getCategoryByName } from '../controllers/categoryModule/category.controller.js';
 import upload from '../config/multer.js';
 
 const  router = express.Router();
@@ -12,5 +12,7 @@ router.put('/editCategoryById/:categoryId',upload.single('categoryImage'), editC
 router.delete('/deleteCategoryById/:categoryId', deleteCategoryById);
 router.get('/getProductByCategory', getAllProductByCategory);
 router.get('/getProductByCategoryName', getAllProductByCategoryName)
+router.get('/getProductByCategoryName/:name', getCategoryByName)
+
 
 export default router;

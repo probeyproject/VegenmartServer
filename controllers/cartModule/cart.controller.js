@@ -153,6 +153,7 @@ export const getCartById = async (req, res) => {
     }
 }
 
+
 export const getAllCartByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -169,6 +170,7 @@ export const getAllCartByUserId = async (req, res) => {
 
     // Map the results to match the frontend structure
     const formattedResults = results.map(cart => ({
+      cart_id: cart.cart_id,  // Include cart_id
       id: cart.product_id || cart.combo_id,  // Use product_id or combo_id
       product_name: cart.product_name || cart.combo_title,  // Either product_name or combo_title
       product_image: cart.product_image || cart.combo_image,  // Either product_image or combo_image
@@ -183,7 +185,7 @@ export const getAllCartByUserId = async (req, res) => {
     console.log("GetAllCart Error", error);
     return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
-};
+};;
 
 
 export const deleteCartById = async (req, res) => {

@@ -1,7 +1,8 @@
 import cloudinary from "../../config/cloudinary.js";
 import path from 'path';
 import fs from 'fs';
-import { createCategoryModel, deleteCategoryByIdModel, editCategoryByIdModel, getAllCategoryModel, getAllProductByCategoryModel, getCategoryByIdModel, getCategoryByIdModels, getProductByCategoryNameModel } from "../../models/category.model.js";
+import { createCategoryModel, deleteCategoryByIdModel, editCategoryByIdModel, getAllCategoryModel, getAllProductByCategoryModel, getCategoryByIdModel, getCategoryByIdModels, getCategoryBynameModel, getProductByCategoryNameModel } from "../../models/category.model.js";
+import { log } from "console";
 
 export const createCategory = async (req, res) => {
   const { categoryName, description, status } = req.body;
@@ -68,6 +69,29 @@ export const getCategoryById = async (req, res) => {
     }
 
     const result = await getCategoryByIdModel(categoryId); 
+
+    if(!result) {
+        return res.status(400).json({message : "Category is not present"})
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+export const getCategoryByName = async (req, res) => {
+  try {
+    const  categoryName  = req.params.name;
+// console.log(req.params);
+console.log(categoryName);
+
+
+    if(!categoryName) {
+        return res.status(400).json({message : "category is required!"})
+    }
+
+    const result = await getCategoryBynameModel(categoryName); 
 
     if(!result) {
         return res.status(400).json({message : "Category is not present"})

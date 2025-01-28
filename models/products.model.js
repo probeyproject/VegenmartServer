@@ -168,7 +168,7 @@ export const getAllProductModal = async () => {
         subcategories.subcategory_name, 
         brands.brand_name, 
         price.price_id
-      LIMIT 20
+      
     `;
 
     const [result] = await db.query(query);

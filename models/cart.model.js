@@ -194,7 +194,8 @@ export const getCardByIdModel = async (cartId) => {
 export const getAllCardByUserIdModel = async (userId) => {
   try {
     const query = `
-      SELECT 
+      SELECT  
+        carts.cart_id,
         carts.*, 
         COALESCE(product.product_name, combos.title) AS product_name,
         COALESCE(product.product_image, combos.product_image) AS product_image,
