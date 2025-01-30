@@ -1,6 +1,6 @@
 import { createCouponModel, deleteCouponByIdModel, editCouponByIdModel, getAllCouponModel, getCouponByIdModel, validateCouponModel } from "../../models/coupon.model.js";
 
-
+ 
 export const createCoupon = async (req, res) => {
     try {
         const { coupon_code, discount_type, discount_value, start_date, end_date, product_id } = req.body;

@@ -32,7 +32,7 @@ export const login=async(req,res)=>{
                         httpOnly:true,
                     }).status(200).json({
                         message: 'Login successful',
-                        token,
+                       token,
                         user: {
                             id: user.id,
                             email: user.email,
@@ -93,11 +93,11 @@ export const adminLogin=async(req,res)=>{
 
 export const logout = async (req, res) => {
     try {
-      res.clearCookie('accessToken', {
+      res.clearCookie('token', {
         httpOnly: true,
         sameSite: 'Strict',
       });
-      console.log(res.clearCookie('accessToken', {
+      console.log(res.clearCookie('token', {
         httpOnly: true,
         sameSite: 'Strict',
       }));
@@ -114,13 +114,17 @@ export const logout = async (req, res) => {
 
 export const check = async (req, res) => {
   try {
-    const token = req.cookies.accessToken;
+    const token = req.cookies?.token || req.header("Authorization")?.replace("Bearer ","")
     if (!token) {
       return res.status(400).json({ message: "Log in first" });
     }
 
+   
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    const userId = decoded.id;
+
+    
+    const userId = decoded.userId;
 
     const user = await getUserByIdModel(userId);
 
