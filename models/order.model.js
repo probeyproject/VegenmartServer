@@ -296,13 +296,22 @@ export const getProductStockById = async (id) => {
 
 export const updateProductStock = async (id, newStock) => {
   try {
-    const query = 'UPDATE product SET stock = ? WHERE product_id = ?';
+    // Validate newStock
+    if (isNaN(newStock) || newStock === null || newStock === undefined) {
+      console.error(`Invalid stock value: ${newStock} for product ID: ${id}`);
+      throw new Error("Invalid stock value provided");
+    }
+
+    const query = "UPDATE product SET stock = ? WHERE product_id = ?";
     await db.query(query, [newStock, id]);
+
+    console.log(`Stock updated successfully for product ID: ${id}, New Stock: ${newStock}`);
   } catch (error) {
     console.log("updateProductStock Error", error);
     throw new Error("Error updating product stock");
   }
 };
+
 
 
 

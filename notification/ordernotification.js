@@ -1,4 +1,4 @@
-import { client, twilioPhoneNumber } from '../config/twilioConfig.js';
+// import { client, twilioPhoneNumber } from '../config/twilioConfig.js';
 import dotenv from "dotenv";
 dotenv.config();
 

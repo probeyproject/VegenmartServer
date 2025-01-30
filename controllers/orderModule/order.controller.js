@@ -142,7 +142,7 @@ export const createOrder = async (req, res) => {
 
       // Update the stock after the order
       const newStock = productStock.stock - unit;
-      await updateProductStock(id, newStock);
+      // await updateProductStock(id, newStock);
     }
 
     // Step 4: Create the order

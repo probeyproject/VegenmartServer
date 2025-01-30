@@ -11,7 +11,12 @@ import db from "../../db/db.js";
 dotenv.config();
 import jwt from "jsonwebtoken";
 import axios from "axios";
-import { addWalletReward, createUser, getUserByReferralCode, sendOtpModel } from "../../models/signup.model.js";
+import {
+  addWalletReward,
+  createUser,
+  getUserByReferralCode,
+  sendOtpModel,
+} from "../../models/signup.model.js";
 
 export const signUp = async (req, res) => {
   const { firstName, middleName, lastName, email, password, role, phone } =
@@ -133,10 +138,6 @@ export const signUp = async (req, res) => {
 // //   }
 // // };
 
-
-
-
-
 // // Today Work hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 // // Generate and send OTP with Referral Code generation
 // export const sendOtp = async (req, res) => {
@@ -200,37 +201,41 @@ export const signUp = async (req, res) => {
 //   return referralCode;
 // };
 
-
-
-
-
 export const sendOtp = async (req, res) => {
   let { phoneNumber } = req.body;
 
   // Prepend country code if not present
-  if (!phoneNumber.startsWith("+91")) {
-    phoneNumber = "+91" + phoneNumber;
-  }
+    // Prepend country code if not present
+    if (!phoneNumber.startsWith("+91")) {
+      phoneNumber = "+91" + phoneNumber;
+    }
 
   // Generate a random 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // OTP valid for 5 minutes
 
   try {
-    // Send OTP via SMS Alert using Axios
-    const response = await axios.get("https://www.smsalert.co.in/api/push.json", {
-      params: {
-        user: process.env.SMS_ALERT_USERNAME, // SMS Alert username
-        password: process.env.SMS_ALERT_PASSWORD, // SMS Alert password
-        sender: "CVDEMO",
-        mobile: phoneNumber,
-        text: `Your OTP code is ${otp}.`,
-        template_id: "1", 
-      },
-    });
+    const response = await axios.post(
+      process.env.SmsApi,
+      {
+        sender: process.env.Sender, // Use your approved Sender ID from Mtalkz
+        to: `${phoneNumber}`, // Include country code
+        text: `Your OTP- One Time Password is ${otp} to authenticate your login with Vegenmart .
 
-    if (response.data.status !== "success") {
-      throw new Error("Failed to send OTP via SMS Alert");
+Powered By Vegenmart`,
+        type: "OTP",
+        // dltTemplateId: "1107173752437570805", // Required for transactional SMS in India
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          apiKey: process.env.apikey, // Use your actual API key
+        },
+      }
+    );
+    console.log("SMS Sent Successfully:", response.data);
+    if (response.data.message !== "Message Sent Successfully!") {
+      throw new Error("Failed to send OTP ");
     }
 
     // Store OTP in the database
@@ -240,26 +245,30 @@ export const sendOtp = async (req, res) => {
     );
 
     // Check if the user already exists in the users table
-    const [existingUser] = await db.query("SELECT phone FROM users WHERE phone = ?", [
-      phoneNumber,
-    ]);
+    const [existingUser] = await db.query(
+      "SELECT phone FROM users WHERE phone = ?",
+      [phoneNumber]
+    );
 
     // If user does not exist, create a new user and generate a referral code
     if (existingUser.length === 0) {
       const referralCode = generateReferralCode();
-      await db.query(
-        "INSERT INTO users (phone, referral_code) VALUES (?, ?)",
-        [phoneNumber, referralCode]
-      );
+      await db.query("INSERT INTO users (phone, referral_code) VALUES (?, ?)", [
+        phoneNumber,
+        referralCode,
+      ]);
     }
 
     return res.status(200).json({ message: "OTP sent successfully!" });
+
+   
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error:error.message });
+    console.error(
+      "Error sending SMS:",
+      error.response ? error.response.data : error.message
+    );
   }
 };
-
 // Function to generate a unique referral code
 const generateReferralCode = () => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -270,8 +279,6 @@ const generateReferralCode = () => {
   }
   return referralCode;
 };
-
-
 
 // Signup for Referral Token
 export const signupUser = async (req, res) => {
@@ -286,7 +293,10 @@ export const signupUser = async (req, res) => {
     await sendOtpModel(req, res);
 
     // Check if the user already exists in the database
-    const [existingUser] = await db.query("SELECT phone FROM users WHERE phone=?", [phoneNumber]);
+    const [existingUser] = await db.query(
+      "SELECT phone FROM users WHERE phone=?",
+      [phoneNumber]
+    );
 
     if (existingUser.length > 0) {
       return res.status(400).json({ error: "User already exists!" });
@@ -312,17 +322,16 @@ export const signupUser = async (req, res) => {
 
     return res.status(200).json({
       message: "Signup successful!",
-      referralCode: referralCodeForNewUser,  // Provide the new user's referral code
+      referralCode: referralCodeForNewUser, // Provide the new user's referral code
       rewardPoints: 50, // Reward points for new user (could be dynamic)
     });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ error: "Something went wrong during signup." });
+    return res
+      .status(500)
+      .json({ error: "Something went wrong during signup." });
   }
 };
-
-
-
 
 // Verify OTP
 export const verifyOtp = async (req, res) => {
@@ -333,22 +342,32 @@ export const verifyOtp = async (req, res) => {
   if (!phoneNumber.startsWith(COUNTRY_CODE)) {
     phoneNumber = COUNTRY_CODE + phoneNumber;
   }
+// console.log(phoneNumber);
 
   try {
-    const [rows] = await db.query("SELECT * FROM otps WHERE phone_number = ?", [phoneNumber]);
+    const [rows] = await db.query("SELECT * FROM otps WHERE phone_number = ?", [
+      phoneNumber,
+    ]);
 
     if (rows.length > 0 && otp === rows[0].otp) {
       await db.query("DELETE FROM otps WHERE otp_id = ?", [rows[0].otp_id]);
 
-      const [user] = await db.query("SELECT * FROM users WHERE phone = ?", [phoneNumber]);
+      const [user] = await db.query("SELECT * FROM users WHERE phone = ?", [
+        phoneNumber,
+      ]);
 
       if (user.length === 0) {
         return res.status(400).json({ message: "User not found" });
       }
 
       // Fetch all carts and wishlists for the user
-      const [cart] = await db.query("SELECT * FROM carts WHERE user_id = ?", [user[0].id]);
-      const [wishlist] = await db.query("SELECT * FROM wishlist WHERE user_id = ?", [user[0].id]);
+      const [cart] = await db.query("SELECT * FROM carts WHERE user_id = ?", [
+        user[0].id,
+      ]);
+      const [wishlist] = await db.query(
+        "SELECT * FROM wishlist WHERE user_id = ?",
+        [user[0].id]
+      );
 
       const token = jwt.sign(
         {
@@ -388,5 +407,3 @@ export const verifyOtp = async (req, res) => {
     return res.status(500).json({ error: "Failed to verify OTP" });
   }
 };
-
-
