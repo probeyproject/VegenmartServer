@@ -1,5 +1,5 @@
 import express from "express"
-import { sendOtp, signUp, signupUser, verifyOtp, } from "../controllers/authModule/signup.controller.js"
+import { googleLogin, sendOtp, signUp, signupUser, verifyOtp, } from "../controllers/authModule/signup.controller.js"
 import upload from "../config/multer.js"
 import { adminLogin, check, login, logout } from "../controllers/authModule/login.controller.js"
 
@@ -13,6 +13,7 @@ router.post("/login",login);
 router.get('/check', check);
 router.get("/logout",logout);
 router.post("/admin/login",adminLogin)
+router.post("/google-login",googleLogin)
 // rewards
 // router.get('/getRefrelByUserId', getRefrelByUserId);
 

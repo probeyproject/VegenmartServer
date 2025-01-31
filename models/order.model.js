@@ -72,6 +72,7 @@ export const getAllOrderModel = async () => {
             FROM 
                 orders
             INNER JOIN addresses ON orders.address_id = addresses.address_id
+             ORDER BY orders.order_id DESC 
         `;
     const [results] = await db.query(query);
     return results.length === 0 ? null : results;
@@ -198,7 +199,7 @@ export const getLatestOrderModel = async () => {
         orders
       INNER JOIN addresses ON orders.address_id = addresses.address_id
       ORDER BY orders.created_at DESC
-      LIMIT 10
+      LIMIT 20
     `;
     const [results] = await db.query(query);
     return results.length === 0 ? null : results;

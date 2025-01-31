@@ -11,6 +11,9 @@ import db from "../../db/db.js";
 dotenv.config();
 import jwt from "jsonwebtoken";
 import axios from "axios";
+
+import { OAuth2Client } from "google-auth-library";
+
 import {
   addWalletReward,
   createUser,
@@ -405,5 +408,71 @@ export const verifyOtp = async (req, res) => {
   } catch (error) {
     console.error("Error verifying OTP:", error);
     return res.status(500).json({ error: "Failed to verify OTP" });
+  }
+};
+
+
+
+
+const client = new OAuth2Client(`${process.env.Google_Client_id}`); // Replace with your Google client ID
+
+export const googleLogin = async (req, res) => {
+  const { token } = req.body; // The token from the frontend
+
+  try {
+    // Verify the Google ID token
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.Google_Client_id, // Ensure the audience matches your Google Client ID
+    });
+
+    // Extract the user's information from the ticket
+    const payload = ticket.getPayload();
+    
+    
+    const {  given_name, family_name, email, picture } = payload; // Get the user's name, email, and profile picture
+
+    // Check if the user exists in the database
+    const [user] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+console.log(user);
+
+    if (user.length === 0) {
+      // User does not exist, create a new user in the database
+      await signupModel(
+        given_name,                // firstName
+        '',                         // middleName (Google doesn't provide this)
+        family_name,               // lastName
+        email,                      // email
+        '',                         // password (no password, as this is a Google login)
+        picture,                    // profileUrl (profile picture from Google)
+        'user',                     // role (you can define a default role)
+        ''                          // phone (not available in Google token)
+      );
+    
+    }
+
+    const result = await userExistModel(email)
+    // Create a JWT token for the user
+    const tokenData = {userId:result[0].id, email, firstName: given_name, lastName: family_name };
+    const jwtToken = jwt.sign(tokenData, process.env.JWT_SECRET_KEY, {
+      expiresIn: "7d", // Set the expiration time for the token
+    });
+
+
+    // Send the JWT token back to the frontend
+    return res.cookie("token", jwtToken, {
+        
+       
+      }).status(200).json({ message: "Login successful", token: jwtToken,user: {
+        id: result[0].id,
+        email: result[0].email,
+        role: result[0].role,
+        profileImageUrl: result[0].profile_url,
+        name:`${result[0].first_name} ${result[0].middle_name} ${result[0].last_name}`
+      } });
+
+  } catch (error) {
+    console.error("Error verifying Google token:", error);
+    return res.status(500).json({ error: "Failed to authenticate with Google" });
   }
 };
