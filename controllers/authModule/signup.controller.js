@@ -208,10 +208,10 @@ export const sendOtp = async (req, res) => {
   let { phoneNumber } = req.body;
 
   // Prepend country code if not present
-    // Prepend country code if not present
-    if (!phoneNumber.startsWith("+91")) {
-      phoneNumber = "+91" + phoneNumber;
-    }
+  // Prepend country code if not present
+  if (!phoneNumber.startsWith("+91")) {
+    phoneNumber = "+91" + phoneNumber;
+  }
 
   // Generate a random 6-digit OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -263,8 +263,6 @@ Powered By Vegenmart`,
     }
 
     return res.status(200).json({ message: "OTP sent successfully!" });
-
-   
   } catch (error) {
     console.error(
       "Error sending SMS:",
@@ -340,17 +338,27 @@ export const signupUser = async (req, res) => {
 export const verifyOtp = async (req, res) => {
   let { phoneNumber, otp } = req.body;
 
+  console.log(otp);
+
+  console.log(phoneNumber);
+
   // Prepend country code if not present
   const COUNTRY_CODE = "+91"; // Define a constant for country code
   if (!phoneNumber.startsWith(COUNTRY_CODE)) {
     phoneNumber = COUNTRY_CODE + phoneNumber;
   }
-// console.log(phoneNumber);
+  // console.log(phoneNumber);
 
   try {
-    const [rows] = await db.query("SELECT * FROM otps WHERE phone_number = ?", [
-      phoneNumber,
-    ]);
+    const [rows] = await db.query(
+      "SELECT * FROM otps WHERE phone_number = ? ORDER BY expires_at DESC LIMIT 1",
+      [phoneNumber]
+    );
+
+    console.log(rows[0].otp);
+
+    // Delete all OTPs for this phone number after successful verification
+    await db.query("DELETE FROM otps WHERE phone_number = ?", [phoneNumber]);
 
     if (rows.length > 0 && otp === rows[0].otp) {
       await db.query("DELETE FROM otps WHERE otp_id = ?", [rows[0].otp_id]);
@@ -374,8 +382,7 @@ export const verifyOtp = async (req, res) => {
 
       const token = jwt.sign(
         {
-          id: user[0].id,
-          email: user[0].email,
+          userId: user[0].id,
         },
         process.env.JWT_SECRET_KEY,
         {
@@ -392,6 +399,7 @@ export const verifyOtp = async (req, res) => {
         .status(200)
         .json({
           message: "OTP verified successfully!",
+          token,
           user: {
             id: user[0].id,
             first_name: user[0].first_name,
@@ -411,9 +419,6 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
-
-
-
 const client = new OAuth2Client(`${process.env.Google_Client_id}`); // Replace with your Google client ID
 
 export const googleLogin = async (req, res) => {
@@ -428,51 +433,60 @@ export const googleLogin = async (req, res) => {
 
     // Extract the user's information from the ticket
     const payload = ticket.getPayload();
-    
-    
-    const {  given_name, family_name, email, picture } = payload; // Get the user's name, email, and profile picture
+
+    const { given_name, family_name, email, picture } = payload; // Get the user's name, email, and profile picture
 
     // Check if the user exists in the database
-    const [user] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
-console.log(user);
+    const [user] = await db.query("SELECT * FROM users WHERE email = ?", [
+      email,
+    ]);
+    console.log(user);
 
     if (user.length === 0) {
       // User does not exist, create a new user in the database
       await signupModel(
-        given_name,                // firstName
-        '',                         // middleName (Google doesn't provide this)
-        family_name,               // lastName
-        email,                      // email
-        '',                         // password (no password, as this is a Google login)
-        picture,                    // profileUrl (profile picture from Google)
-        'user',                     // role (you can define a default role)
-        ''                          // phone (not available in Google token)
+        given_name, // firstName
+        "", // middleName (Google doesn't provide this)
+        family_name, // lastName
+        email, // email
+        "", // password (no password, as this is a Google login)
+        picture, // profileUrl (profile picture from Google)
+        "user", // role (you can define a default role)
+        "" // phone (not available in Google token)
       );
-    
     }
 
-    const result = await userExistModel(email)
+    const result = await userExistModel(email);
     // Create a JWT token for the user
-    const tokenData = {userId:result[0].id, email, firstName: given_name, lastName: family_name };
+    const tokenData = {
+      userId: result[0].id,
+      email,
+      firstName: given_name,
+      lastName: family_name,
+    };
     const jwtToken = jwt.sign(tokenData, process.env.JWT_SECRET_KEY, {
       expiresIn: "7d", // Set the expiration time for the token
     });
 
-
     // Send the JWT token back to the frontend
-    return res.cookie("token", jwtToken, {
-        
-       
-      }).status(200).json({ message: "Login successful", token: jwtToken,user: {
-        id: result[0].id,
-        email: result[0].email,
-        role: result[0].role,
-        profileImageUrl: result[0].profile_url,
-        name:`${result[0].first_name} ${result[0].middle_name} ${result[0].last_name}`
-      } });
-
+    return res
+      .cookie("token", jwtToken, {})
+      .status(200)
+      .json({
+        message: "Login successful",
+        token: jwtToken,
+        user: {
+          id: result[0].id,
+          email: result[0].email,
+          role: result[0].role,
+          profileImageUrl: result[0].profile_url,
+          name: `${result[0].first_name} ${result[0].middle_name} ${result[0].last_name}`,
+        },
+      });
   } catch (error) {
     console.error("Error verifying Google token:", error);
-    return res.status(500).json({ error: "Failed to authenticate with Google" });
+    return res
+      .status(500)
+      .json({ error: "Failed to authenticate with Google" });
   }
 };

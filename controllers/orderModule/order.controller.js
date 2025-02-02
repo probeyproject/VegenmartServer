@@ -23,6 +23,7 @@ import db from "../../db/db.js";
 import fs from "fs";
 import path from "path";
 import cloudinary from "../../config/cloudinary.js";
+import { log } from "console";
 // import cloudinary from "../../config/cloudinary.js";
 
 
@@ -128,6 +129,7 @@ export const createOrder = async (req, res) => {
     // Step 3: Check and update stock for each product
     for (const product of products) {
       const { id, unit } = product;
+      console.log(id,unit);
       
       // Get the current stock and stock type of the product
       const productStock = await getProductStockById(id);
@@ -142,7 +144,7 @@ export const createOrder = async (req, res) => {
 
       // Update the stock after the order
       const newStock = productStock.stock - unit;
-      // await updateProductStock(id, newStock);
+      await updateProductStock(id, newStock);
     }
 
     // Step 4: Create the order
