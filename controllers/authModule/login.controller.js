@@ -53,42 +53,52 @@ export const login=async(req,res)=>{
     }
 }
 
-export const adminLogin=async(req,res)=>{
-    const { email, password } = req.body;
-    // console.log(req.body);
-    
+
+export const adminLogin = async (req, res) => {
+  const { email, password } = req.body;
+  // console.log(req.body);
+
   try {
-    const users = await userExistModel(email)
+    const users = await userExistModel(email);
     const user = users[0];
 
-    if (user && user.role === 'admin' && await bcrypt.compare(password, user.password)) {
+    if (
+      user &&
+      user.role === "admin" &&
+      (await bcrypt.compare(password, user.password))
+    ) {
       // Create a JWT token for admin
-      const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
-       // Construct profile image URL if available
-       let profileImageUrl = user.profile_url || null;
-       delete user.password;
-      return res.cookie('accessToken',token,{
-           httpOnly:true,
-       }).status(200).json({
-           message: 'Login successful',
-           // token,
-           user: {
-               id: user.id,
-               email: user.email,
-               role: user.role,
-               profileImageUrl,
-               name:`${user.first_name} ${user.middle_name} ${user.last_name}`
-             }
-           })
+      const token = jwt.sign(
+        { userId: user.id, role: user.role },
+        process.env.JWT_SECRET_KEY,
+        { expiresIn: "1h" }
+      );
+      // Construct profile image URL if available
+      let profileImageUrl = user.profile_url || null;
+      delete user.password;
+      return res
+        .cookie("token", token)
+        .status(200)
+        .json({
+          message: "Login successful",
+          token,
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            profileImageUrl,
+            name: `${user.first_name} ${user.middle_name} ${user.last_name}`,
+          },
+        });
     } else {
-        return res.status(400).json({message:"No access"});
+      return res.status(400).json({ message: "No access" });
     }
   } catch (error) {
     console.log(err);
-    
-    return res.status(500).json({message:err.message})
+
+    return res.status(500).json({ message: err.message });
   }
-}
+};
 
 
 export const logout = async (req, res) => {

@@ -44,6 +44,10 @@ export const calculatePrice = async (req, res) => {
     const { productId } = req.params;
     const { weight, unitType } = req.body;
 
+    console.log(productId)
+
+    console.log(weight,unitType)
+
     if (!productId) {
       return res.status(400).json({ message: "Product Id is required!" });
     }
@@ -53,6 +57,9 @@ export const calculatePrice = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: "Product not found!" });
     }
+
+ 
+    
 
     const basePrice = product.product_price;
 
@@ -86,6 +93,8 @@ export const calculatePrice = async (req, res) => {
         // No discount; return total base price
         finalPrice = totalBasePrice;
       }
+
+
 
       // Return the calculated final price
       return res.status(201).json({
