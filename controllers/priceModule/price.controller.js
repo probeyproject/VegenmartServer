@@ -64,7 +64,7 @@ export const calculatePrice = async (req, res) => {
     const basePrice = product.product_price;
 
     // Validate weight and unit type
-    if (unitType === "Kg") {
+    if (unitType === "kg") {
       const allowedWeights = [
         0.25, 0.5, 0.75, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
       ];
