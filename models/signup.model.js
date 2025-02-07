@@ -1,4 +1,5 @@
 import db from "../db/db.js";
+import { createWallet } from "./order.model.js";
 
 // Get user by referral code
 export const getUserByReferralCode = async (referralCode) => {
@@ -17,6 +18,8 @@ export const createUser = async (phoneNumber, referralCode) => {
   try {
     const query = "INSERT INTO users (phone, referral_code) VALUES (?, ?)";
     const [result] = await db.query(query, [phoneNumber, referralCode]);
+
+    await createWallet(userId);
     return result.insertId;
   } catch (error) {
     console.log("Model Error", error);
@@ -48,7 +51,6 @@ export const getWalletBalance = async (userId) => {
     throw new Error("Model DB Error");
   }
 };
-
 
 // Generate and send OTP (without sending response here)
 export const sendOtpModel = async (req) => {

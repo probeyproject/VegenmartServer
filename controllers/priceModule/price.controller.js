@@ -37,16 +37,16 @@ export const createDiscountRange = async (req, res) => {
       .status(500)
       .json({ message: "Internal Server Error", error: error.message });
   }
-}; 
+};
 
 export const calculatePrice = async (req, res) => {
   try {
     const { productId } = req.params;
     const { weight, unitType } = req.body;
 
-    console.log(productId)
+    console.log(productId);
 
-    console.log(weight,unitType)
+    console.log(weight, unitType);
 
     if (!productId) {
       return res.status(400).json({ message: "Product Id is required!" });
@@ -58,15 +58,13 @@ export const calculatePrice = async (req, res) => {
       return res.status(404).json({ message: "Product not found!" });
     }
 
- 
-    
-
     const basePrice = product.product_price;
 
     // Validate weight and unit type
     if (unitType === "kg") {
       const allowedWeights = [
-        0.25, 0.5, 0.75, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        0.05, 0.1, 0.25, 0.5, 0.75, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+        14, 15,
       ];
 
       if (!allowedWeights.includes(weight)) {
@@ -93,8 +91,6 @@ export const calculatePrice = async (req, res) => {
         // No discount; return total base price
         finalPrice = totalBasePrice;
       }
-
-
 
       // Return the calculated final price
       return res.status(201).json({
@@ -136,9 +132,6 @@ export const calculatePrice = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
-
-
-
 
 export const getAllDiscountRange = async (req, res) => {
   try {

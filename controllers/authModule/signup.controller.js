@@ -20,6 +20,7 @@ import {
   getUserByReferralCode,
   sendOtpModel,
 } from "../../models/signup.model.js";
+import { createWallet } from "../../models/order.model.js";
 
 export const signUp = async (req, res) => {
   const { firstName, middleName, lastName, email, password, role, phone } =
@@ -80,6 +81,10 @@ export const signUp = async (req, res) => {
         role,
         phone
       );
+
+      const newUser = await userExistModel(email);
+
+      await createWallet(newUser[0].id);
 
       return res.status(200).json({ message: "User registered" });
     } else {
@@ -236,7 +241,7 @@ Powered By Vegenmart`,
         },
       }
     );
-    console.log("SMS Sent Successfully:", response.data);
+    // console.log("SMS Sent Successfully:", response.data);
     if (response.data.message !== "Message Sent Successfully!") {
       throw new Error("Failed to send OTP ");
     }
@@ -338,10 +343,6 @@ export const signupUser = async (req, res) => {
 export const verifyOtp = async (req, res) => {
   let { phoneNumber, otp } = req.body;
 
-  console.log(otp);
-
-  console.log(phoneNumber);
-
   // Prepend country code if not present
   const COUNTRY_CODE = "+91"; // Define a constant for country code
   if (!phoneNumber.startsWith(COUNTRY_CODE)) {
@@ -355,13 +356,10 @@ export const verifyOtp = async (req, res) => {
       [phoneNumber]
     );
 
-    console.log(rows[0].otp);
-
     // Delete all OTPs for this phone number after successful verification
-    await db.query("DELETE FROM otps WHERE phone_number = ?", [phoneNumber]);
 
     if (rows.length > 0 && otp === rows[0].otp) {
-      await db.query("DELETE FROM otps WHERE otp_id = ?", [rows[0].otp_id]);
+      await db.query("DELETE FROM otps WHERE phone_number = ?", [phoneNumber]);
 
       const [user] = await db.query("SELECT * FROM users WHERE phone = ?", [
         phoneNumber,
@@ -454,6 +452,10 @@ export const googleLogin = async (req, res) => {
         "user", // role (you can define a default role)
         "" // phone (not available in Google token)
       );
+
+      const newUser = await userExistModel(email);
+
+      await createWallet(newUser[0].id);
     }
 
     const result = await userExistModel(email);
