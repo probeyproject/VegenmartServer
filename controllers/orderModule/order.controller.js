@@ -14,7 +14,7 @@ import {
   getWalletPoints,
   updateProductStock,
   updateWalletPoints,
-  updateOrderInvoice
+  updateOrderInvoice,
 } from "../../models/order.model.js";
 import { createTrackingModel } from "../../models/tracking.model.js";
 import { sendOrderConfirmationSMS } from "../../notification/ordernotification.js";
@@ -25,7 +25,6 @@ import path from "path";
 import cloudinary from "../../config/cloudinary.js";
 import { log } from "console";
 // import cloudinary from "../../config/cloudinary.js";
-
 
 // export const createOrder = async (req, res) => {
 //   try {
@@ -46,7 +45,6 @@ import { log } from "console";
 //         // Step 2: Calculate final price after applying points
 //         const finalPrice = totalPrice - pointsUsed;
 
-
 //     // Create the order
 //     const result = await createOrderModel(
 //       JSON.stringify(products),
@@ -65,7 +63,6 @@ import { log } from "console";
 //       gst_percentage,
 //       shipping_cost
 //     );
-
 
 //     if (!result || !result.insertId) {
 //       return res.status(400).json({ message: "Order not created!" });
@@ -106,11 +103,27 @@ import { log } from "console";
 //   }
 // };
 
-
 export const createOrder = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { products, totalPrice, cupon, orderStatus, quantity, payment, deliveryDate, deliveryTimeSlot, address_id, payment_mode, pointsUsed, gst_cost, gst_percentage, shipping_cost } = req.body;
+    const {
+      products,
+      totalPrice,
+      cupon,
+      orderStatus,
+      quantity,
+      payment,
+      deliveryDate,
+      deliveryTimeSlot,
+      address_id,
+      payment_mode,
+      pointsUsed,
+      gst_cost,
+      gst_percentage,
+      shipping_cost,
+    } = req.body;
+
+    console.log(userId);
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required!" });
@@ -118,6 +131,8 @@ export const createOrder = async (req, res) => {
 
     // Step 1: Check if user has enough points
     const availablePoints = await getWalletPoints(userId);
+
+    console.log(availablePoints);
 
     if (pointsUsed > availablePoints) {
       return res.status(400).json({ message: "Not enough points in wallet" });
@@ -129,17 +144,21 @@ export const createOrder = async (req, res) => {
     // Step 3: Check and update stock for each product
     for (const product of products) {
       const { id, unit } = product;
-      console.log(id,unit);
-      
+      console.log(id, unit);
+
       // Get the current stock and stock type of the product
       const productStock = await getProductStockById(id);
       if (!productStock) {
-        return res.status(400).json({ message: `Product with ID ${id} not found` });
+        return res
+          .status(400)
+          .json({ message: `Product with ID ${id} not found` });
       }
 
       // Check if there is enough stock for the requested quantity (considering weight as well)
       if (productStock.stock < unit) {
-        return res.status(400).json({ message: `Insufficient stock for product ${id}` });
+        return res
+          .status(400)
+          .json({ message: `Insufficient stock for product ${id}` });
       }
 
       // Update the stock after the order
@@ -171,18 +190,25 @@ export const createOrder = async (req, res) => {
     }
 
     // Step 5: Update wallet points
-    await updateWalletPoints(userId, pointsUsed);
+
+    console.log(availablePoints, pointsUsed);
+
+    const updatedPoints = availablePoints - pointsUsed;
+
+    console.log(updatedPoints);
+
+    await updateWalletPoints(userId, updatedPoints);
 
     const orderId = result.insertId;
 
     // Automatically create a tracking record for this order
     const trackingData = {
-      orderId,  // Use the newly created order ID
-      status: "Order Confirmed",  // Initial status
-      location: "Warehouse",  // Optional initial location
+      orderId, // Use the newly created order ID
+      status: "Order Confirmed", // Initial status
+      location: "Warehouse", // Optional initial location
     };
 
-    await createTrackingModel(trackingData);  // Create tracking entry
+    await createTrackingModel(trackingData); // Create tracking entry
 
     // Retrieve the user's phone number
     const userPhone = await getUserPhoneById(userId);
@@ -196,13 +222,22 @@ export const createOrder = async (req, res) => {
     // Step 6: Clean up cart
     await deleteCartByUserIdModel(userId);
 
+    if (totalPrice >= 500) {
+      const newPoints = totalPrice * (10 / 100);
+      const balance = await addWalletReward(userId, newPoints);
+
+      console.log(balance);
+    }
+
     return res.status(201).json({
       message: "Order created successfully and tracking initiated.",
-      orderId,  // Return the order ID
+      orderId, // Return the order ID
     });
   } catch (error) {
     console.log("CreateOrder Error", error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -211,7 +246,9 @@ export const uploadInvoice = async (req, res) => {
     const { invoiceBase64, orderId } = req.body;
 
     if (!invoiceBase64 || !orderId) {
-      return res.status(400).json({ error: "Missing invoiceBase64 or orderId" });
+      return res
+        .status(400)
+        .json({ error: "Missing invoiceBase64 or orderId" });
     }
 
     // Convert Base64 data to a PDF buffer
@@ -264,14 +301,16 @@ export const getAllOrder = async (req, res) => {
     return res.status(200).json(results);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
 export const getOrderById = async (req, res) => {
   try {
     const { orderId } = req.params;
-    
+
     if (!orderId) {
       return res
         .status(400)
@@ -287,7 +326,9 @@ export const getOrderById = async (req, res) => {
     return res.status(200).json(orderData);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -297,11 +338,15 @@ export const editOrderById = async (req, res) => {
     const { status } = req.body;
 
     if (!orderId) {
-      return res.status(400).json({ message: "Please Provide Order Id or Invalid" });
+      return res
+        .status(400)
+        .json({ message: "Please Provide Order Id or Invalid" });
     }
 
     if (status !== "Delivered") {
-      return res.status(400).json({ message: "Only 'Delivered' status can trigger rewards." });
+      return res
+        .status(400)
+        .json({ message: "Only 'Delivered' status can trigger rewards." });
     }
 
     const results = await editOrderByIdModel(status, orderId);
@@ -310,39 +355,44 @@ export const editOrderById = async (req, res) => {
       return res.status(400).json({ message: "Order status update failed." });
     }
 
-     // Get the order details to calculate reward points
-     const [orderDetails] = await db.query("SELECT user_id, total_price FROM orders WHERE order_id = ?", [orderId]);
-     if (!orderDetails || !orderDetails[0]) {
-       return res.status(400).json({ message: "Order not found." });
-     }
+    // Get the order details to calculate reward points
+    const [orderDetails] = await db.query(
+      "SELECT user_id, total_price FROM orders WHERE order_id = ?",
+      [orderId]
+    );
+    if (!orderDetails || !orderDetails[0]) {
+      return res.status(400).json({ message: "Order not found." });
+    }
 
-     const { user_id, total_price } = orderDetails[0];
+    const { user_id, total_price } = orderDetails[0];
 
-     // Calculate the reward points dynamically (e.g., based on order value)
-     const rewardPoints = calculateRewardPoints(total_price);
- 
-     // Add reward points to the user's wallet
-     await addWalletReward(user_id, rewardPoints);  // Add points to the user's wallet
+    // Calculate the reward points dynamically (e.g., based on order value)
+    const rewardPoints = calculateRewardPoints(total_price);
 
-        // Retrieve the user's phone number
+    // Add reward points to the user's wallet
+    await addWalletReward(user_id, rewardPoints); // Add points to the user's wallet
+
+    // Retrieve the user's phone number
     const userPhone = await getUserPhoneById(userId);
     if (!userPhone) {
       return res.status(400).json({ message: "User phone number not found!" });
     }
 
-     // Add reward points to the user's wallet
-     await sendOrderConfirmationSMS(userPhone, orderId, rewardPoints);
- 
-     return res.status(200).json({
-       message: `Order delivered successfully. ${rewardPoints} points awarded.`,
-       userId: user_id,
-       rewardPoints,
-     });
+    // Add reward points to the user's wallet
+    await sendOrderConfirmationSMS(userPhone, orderId, rewardPoints);
+
+    return res.status(200).json({
+      message: `Order delivered successfully. ${rewardPoints} points awarded.`,
+      userId: user_id,
+      rewardPoints,
+    });
 
     // return res.status(200).json("Order Update Successfully!");
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -365,7 +415,9 @@ export const getOrderByUserId = async (req, res) => {
     return res.status(200).json(results);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -388,7 +440,9 @@ export const deleteOrderById = async (req, res) => {
     return res.status(200).json({ message: "Order deleted Successfully!" });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -403,7 +457,9 @@ export const getLatestOrder = async (req, res) => {
     return res.status(200).json(results);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -418,14 +474,15 @@ export const getOrderCount = async (req, res) => {
     return res.status(200).json(results);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
-
 
 // functions
 const calculateRewardPoints = (totalPrice) => {
   // Example: 1 point for every 100 INR spent (this can be customized)
-  const points = Math.floor(totalPrice / 100);  // Round down to the nearest integer
-  return points;  // You can customize this logic further
+  const points = Math.floor(totalPrice / 100); // Round down to the nearest integer
+  return points; // You can customize this logic further
 };

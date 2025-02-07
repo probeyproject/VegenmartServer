@@ -37,7 +37,7 @@ export const createOrderModel = async (
       pointsUsed,
       gst_cost,
       gst_percentage,
-      shipping_cost
+      shipping_cost,
     ]);
 
     // Ensure the insertId is returned
@@ -247,48 +247,85 @@ export const getOrderCountModel = async () => {
 //   }
 // };
 
+//create user's wallet on signup
+
+export const createWallet = async (userId, initialPoints = 0) => {
+  try {
+    // Insert a new wallet entry if it does not exist
+    await db.query(
+      "INSERT INTO wallets (user_id, points) VALUES (?, ?) ON DUPLICATE KEY UPDATE points = points",
+      [userId, initialPoints]
+    );
+
+    return { success: true, message: "Wallet created or already exists." };
+  } catch (error) {
+    console.error("Error creating wallet:", error);
+    throw new Error("Failed to create wallet.");
+  }
+};
+
 // Add reward points to the user's wallet
 export const addWalletReward = async (userId, points) => {
   try {
     // Retrieve the current wallet balance
-    const [currentBalance] = await db.query("SELECT SUM(points) AS balance FROM wallets WHERE user_id = ?", [userId]);
+    const [currentBalance] = await db.query(
+      "SELECT points FROM wallets WHERE user_id = ?",
+      [userId]
+    );
+
+    if (currentBalance.length === 0) {
+      // If the user does not have a wallet record, create a new one
+      await db.query("INSERT INTO wallets (user_id, points) VALUES (?, ?)", [
+        userId,
+        points,
+      ]);
+      return points; // Return the newly added points as balance
+    }
 
     // Calculate the new balance
-    const newBalance = currentBalance[0].balance + points;
+    const newBalance = currentBalance[0].points + points;
 
-    // Update wallet with the new balance (or create a new record if none exists)
-    await db.query("INSERT INTO wallets (user_id, points) VALUES (?, ?) ON DUPLICATE KEY UPDATE points = ?", [userId, points, newBalance]);
+    // Update the wallet with the new balance
+    await db.query("UPDATE wallets SET points = ? WHERE user_id = ?", [
+      newBalance,
+      userId,
+    ]);
 
-    return newBalance;  // Return the updated balance
+    return newBalance; // Return the updated balance
   } catch (error) {
     console.log("Error adding wallet points", error);
     throw new Error("Error updating wallet points");
   }
 };
 
-
 // Get wallet points for a user
 export const getWalletPoints = async (userId) => {
-  const [rows] = await db.query('SELECT points FROM wallets WHERE user_id = ?', [userId]);
+  const [rows] = await db.query(
+    "SELECT points FROM wallets WHERE user_id = ?",
+    [userId]
+  );
   return rows.length > 0 ? rows[0].points : 0;
 };
 
 // Deduct points from the wallet after order completion
-export const updateWalletPoints = async (userId, pointsUsed) => {
-  await db.query('UPDATE wallets SET points = points - ? WHERE user_id = ?', [pointsUsed, userId]);
+export const updateWalletPoints = async (userId, updatedPoints) => {
+  console.log(updatedPoints);
+  await db.query("UPDATE wallets SET points =  ? WHERE user_id = ?", [
+    updatedPoints,
+    userId,
+  ]);
 };
-
 
 export const getProductStockById = async (id) => {
   try {
-    const query = 'SELECT stock, stock_type FROM product WHERE product_id = ?';
+    const query = "SELECT stock, stock_type FROM product WHERE product_id = ?";
     const [rows] = await db.query(query, [id]);
 
     if (rows.length === 0) {
-      return null;  // Product not found
+      return null; // Product not found
     }
 
-    return rows[0];  // Return product details
+    return rows[0]; // Return product details
   } catch (error) {
     console.log("getProductStockById Error", error);
     throw new Error("Error fetching product stock");
@@ -306,14 +343,11 @@ export const updateProductStock = async (id, newStock) => {
     const query = "UPDATE product SET stock = ? WHERE product_id = ?";
     await db.query(query, [newStock, id]);
 
-    console.log(`Stock updated successfully for product ID: ${id}, New Stock: ${newStock}`);
+    console.log(
+      `Stock updated successfully for product ID: ${id}, New Stock: ${newStock}`
+    );
   } catch (error) {
     console.log("updateProductStock Error", error);
     throw new Error("Error updating product stock");
   }
 };
-
-
-
-
-
