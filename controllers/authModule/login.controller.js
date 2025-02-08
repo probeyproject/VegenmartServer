@@ -4,7 +4,6 @@ import env from "dotenv";
 import { userExistModel } from "../../models/auth.model.js";
 import { getUserByIdModel } from "../../models/user.model.js";
 import db from "../../db/db.js";
-
 import nodemailer from "nodemailer";
 
 env.config();
@@ -61,6 +60,8 @@ const sendResetEmail = (email, otp) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    console.log(email, password);
     const result = await userExistModel(email);
     if (result.length != 0) {
       const user = result[0];

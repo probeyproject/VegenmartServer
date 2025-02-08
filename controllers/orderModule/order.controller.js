@@ -132,7 +132,6 @@ export const createOrder = async (req, res) => {
     // Step 1: Check if user has enough points
     const availablePoints = await getWalletPoints(userId);
 
-    console.log(availablePoints);
 
     if (pointsUsed > availablePoints) {
       return res.status(400).json({ message: "Not enough points in wallet" });
@@ -166,6 +165,11 @@ export const createOrder = async (req, res) => {
       await updateProductStock(id, newStock);
     }
 
+
+    const orders = await getOrderByUserIdModel(userId);
+
+    const isFirstPurchase = (orders?.length || 0) === 0;
+
     // Step 4: Create the order
     const result = await createOrderModel(
       JSON.stringify(products),
@@ -191,11 +195,9 @@ export const createOrder = async (req, res) => {
 
     // Step 5: Update wallet points
 
-    console.log(availablePoints, pointsUsed);
+    if(isFirstPurchase) await addWalletReward(userId,100)
 
     const updatedPoints = availablePoints - pointsUsed;
-
-    console.log(updatedPoints);
 
     await updateWalletPoints(userId, updatedPoints);
 
@@ -485,4 +487,81 @@ const calculateRewardPoints = (totalPrice) => {
   // Example: 1 point for every 100 INR spent (this can be customized)
   const points = Math.floor(totalPrice / 100); // Round down to the nearest integer
   return points; // You can customize this logic further
+};
+
+export const cancelOrderById = async (req, res) => {
+  const { orderId } = req.body; // Get the orderId and userId from the request body
+
+  console.log(orderId);
+
+  if (!orderId) {
+    return res.status(400).json({ error: "Order ID is required" });
+  }
+
+  try {
+    // Step 1: Fetch the order details using the order ID
+    const orderDetails = await getOrderByIdModel(orderId);
+
+    console.log(orderDetails);
+
+    if (!orderDetails) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Step 2: Check if the order is already cancelled or completed
+    if (
+      orderDetails.order_status === "Cancelled" ||
+      orderDetails.order_status === "Delivered"
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Order has already been cancelled or delivered" });
+    }
+
+    // Step 3: Update the order status to 'Cancelled'
+    await editOrderByIdModel("Cancelled", orderId);
+
+    // Step 4: Update stock levels for the products in the order (if applicable)
+    // const products = orderDetails.products; // Assuming you store products as a JSON string in the database
+    // for (const product of products) {
+    //   const productStock = await getProductStockById(product.id);
+
+    //   console.log(productStock);
+    //   if (productStock) {
+    //     const newStock = productStock.stock + product.quantity; // Add the product quantity back to stock
+    //     await updateProductStock(product.id, newStock); // Update the stock
+    //   }
+    // }
+
+    // Step 5: Refund points to the user's wallet (if points were used)
+
+    const availablePoints = await getWalletPoints(orderDetails.user_id);
+
+    console.log(availablePoints);
+
+    let refundPoints = orderDetails.points_used || 0; // Default to 0 if no points were used
+
+    // If total price >= 500, deduct 10% of the total price from the refunded points
+    if (orderDetails.total_price >= 500) {
+      const penaltyPoints = Math.floor(orderDetails.total_price * 0.1); // Calculate 10% penalty
+      // refundPoints = Math.max(0, refundPoints - penaltyPoints); // Ensure points don't go negative
+
+      await updateWalletPoints(
+        orderDetails.user_id,
+        availablePoints - penaltyPoints
+      );
+    }
+
+    // Step 6: Send a response confirming the cancellation
+    return res.status(200).json({
+      message: "Order cancelled successfully",
+      orderId: orderId,
+      newStatus: "Cancelled",
+    });
+  } catch (error) {
+    console.error("Error in cancelOrderController:", error);
+    return res
+      .status(500)
+      .json({ error: "Something went wrong while canceling the order" });
+  }
 };

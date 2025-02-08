@@ -6,6 +6,7 @@ import {
   getCouponByIdModel,
   validateCouponModel,
 } from "../../models/coupon.model.js";
+import { getOrderByUserIdModel } from "../../models/order.model.js";
 
 export const createCoupon = async (req, res) => {
   try {

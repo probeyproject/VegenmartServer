@@ -1,8 +1,9 @@
 import express from "express";
 import {
+  cancelOrderById,
   createOrder,
   deleteOrderById,
-  editOrderById, 
+  editOrderById,
   getAllOrder,
   getLatestOrder,
   getOrderById,
@@ -19,7 +20,8 @@ router.get("/getOrderById/:orderId", getOrderById);
 router.get("/getOrderByUserId/:userId", getOrderByUserId);
 router.put("/editOrderById/:orderId", editOrderById);
 router.delete("/deleteOrderById/:orderId", deleteOrderById);
-router.get('/getLatestOrder', getLatestOrder);
-router.get('/getOrderCount', getOrderCount);
+router.get("/getLatestOrder", getLatestOrder);
+router.get("/getOrderCount", getOrderCount);
 router.post("/upload-invoice", uploadInvoice);
+router.patch("/cancel-order", cancelOrderById);
 export default router;

@@ -87,6 +87,8 @@ export const getOrderByIdModel = async (orderId) => {
     const query = `
       SELECT 
         orders.order_id,
+        orders.user_id,
+        orders.points_used,
         orders.total_price,
         orders.order_status,
         orders.quantity AS total_quantity,
