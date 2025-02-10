@@ -45,13 +45,13 @@ export const createCartModel = async (
     const [results] = await db.query(query, [
       userId,
       productId || null, // Use null if productId is not provided
-      combo_id || null,  // Use null if combo_id is not provided
+      combo_id || null, // Use null if combo_id is not provided
       totalPrice || 0,
       quantity || 1,
       cartStatus || null,
       weight || 0,
       weight_type || null,
-      final_price || 0
+      final_price || 0,
     ]);
 
     return results.length === 0 ? null : results;
@@ -60,7 +60,6 @@ export const createCartModel = async (
     throw new Error(`CartModel DB error ${error.message}`);
   }
 };
-
 
 export const updateCartModel = async (
   userId,
@@ -87,7 +86,8 @@ export const updateCartModel = async (
     }
 
     // Check if a cart with the given userId and productId exists
-    const checkCartQuery = "SELECT * FROM carts WHERE user_id = ? AND product_id = ?";
+    const checkCartQuery =
+      "SELECT * FROM carts WHERE user_id = ? AND product_id = ?";
     const [cartExists] = await db.query(checkCartQuery, [userId, productId]);
     if (cartExists.length === 0) {
       return { error: "Cart not found for this user and product" };
@@ -98,7 +98,7 @@ export const updateCartModel = async (
       UPDATE carts 
       SET total_price = ?, quantity = ?, cart_status = ?, weight = ?, weight_type = ?
       WHERE user_id = ? AND product_id = ?`;
-    
+
     const [updateResults] = await db.query(updateQuery, [
       totalPrice,
       quantity,
@@ -112,8 +112,12 @@ export const updateCartModel = async (
     // Check if update was successful
     if (updateResults.affectedRows > 0) {
       // Fetch the updated cart data
-      const selectUpdatedCartQuery = "SELECT * FROM carts WHERE user_id = ? AND product_id = ?";
-      const [updatedCart] = await db.query(selectUpdatedCartQuery, [userId, productId]);
+      const selectUpdatedCartQuery =
+        "SELECT * FROM carts WHERE user_id = ? AND product_id = ?";
+      const [updatedCart] = await db.query(selectUpdatedCartQuery, [
+        userId,
+        productId,
+      ]);
 
       return { success: true, updatedCart: updatedCart[0] }; // Return the first (and only) updated cart
     } else {
@@ -124,7 +128,6 @@ export const updateCartModel = async (
     throw new Error(`CartModel DB error ${error.message}`);
   }
 };
-
 
 export const getAllCartModel = async () => {
   try {
@@ -190,7 +193,6 @@ export const getCardByIdModel = async (cartId) => {
   }
 };
 
-
 export const getAllCardByUserIdModel = async (userId) => {
   try {
     const query = `
@@ -216,10 +218,6 @@ export const getAllCardByUserIdModel = async (userId) => {
   }
 };
 
-
-
-
-
 export const deleteCartByIdModel = async (cartId) => {
   try {
     const query = "DELETE FROM carts WHERE cart_id = ?";
@@ -230,7 +228,6 @@ export const deleteCartByIdModel = async (cartId) => {
     throw new Error(`CartModel DB error ${error.message}`);
   }
 };
-
 
 // Get products from the cart for a specific user
 export const getCartProductsByUserId = async (userId) => {
@@ -245,7 +242,7 @@ export const getCartProductsByUserId = async (userId) => {
     );
     return rows;
   } catch (error) {
-    throw new Error('Error fetching cart products: ' + error.message);
+    throw new Error("Error fetching cart products: " + error.message);
   }
 };
 
@@ -290,12 +287,12 @@ export const getRelatedProducts = async (categories, userId) => {
         p.product_id, cat.category_name, pr.price_id
       LIMIT 8
     `;
-  
+
     const [rows] = await db.query(query, [userId, categories]);
-  
+
     // Process the results to embed wishlist information directly into each product
     const products = {};
-  
+
     rows.forEach((row) => {
       // If the product is not already in the products object, add it
       if (!products[row.product_id]) {
@@ -319,26 +316,18 @@ export const getRelatedProducts = async (categories, userId) => {
           offers: [],
         };
       }
-  
+
       // Add the offer to the product's offers array
       products[row.product_id].offers.push({
         min_weight: row.min_weight,
         max_weight: row.max_weight,
-        discount_price: row.offer_discount_price
+        discount_price: row.offer_discount_price,
       });
     });
-  
+
     // Convert the products object to an array and return
     return Object.values(products);
-  
   } catch (error) {
-    throw new Error('Error fetching related products: ' + error.message);
+    throw new Error("Error fetching related products: " + error.message);
   }
 };
-
-
-
-
-
-
-
