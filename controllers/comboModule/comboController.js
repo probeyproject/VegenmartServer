@@ -231,6 +231,8 @@ export const updateComboController = async (req, res) => {
 export const deleteComboController = async (req, res) => {
   const { id } = req.params;
 
+  console.log(id);
+
   try {
     const success = await deleteCombo(id);
 

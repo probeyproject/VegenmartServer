@@ -152,9 +152,7 @@ export const adminLogin = async (req, res) => {
       return res.status(400).json({ message: "No access" });
     }
   } catch (error) {
-    console.log(err);
-
-    return res.status(500).json({ message: err.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 

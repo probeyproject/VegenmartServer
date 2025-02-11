@@ -154,7 +154,7 @@ export const updateCombo = async (
 
 export const deleteCombo = async (id) => {
   try {
-    const query = "DELETE FROM combos WHERE id = ?";
+    const query = "DELETE FROM combos WHERE combo_id = ?";
     const [result] = await db.query(query, [id]);
     return result.affectedRows > 0;
   } catch (error) {

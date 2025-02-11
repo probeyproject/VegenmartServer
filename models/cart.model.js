@@ -202,15 +202,18 @@ export const getAllCardByUserIdModel = async (userId) => {
         COALESCE(product.product_name, combos.title) AS product_name,
         COALESCE(product.product_image, combos.product_image) AS product_image,
         COALESCE(product.product_price, combos.price) AS product_price,
-        COALESCE(carts.weight, 'Kg') AS weight,
+        COALESCE(carts.weight, 'kg') AS weight,
         COALESCE(carts.weight_type, '') AS weight_type,
-        COALESCE(carts.total_price, 0) AS total_price
+        COALESCE(carts.total_price, 0) AS total_price,
+        carts.quantity
       FROM carts
       LEFT JOIN product ON carts.product_id = product.product_id
       LEFT JOIN combos ON carts.combo_id = combos.combo_id
       WHERE carts.user_id = ?`;
 
     const [result] = await db.query(query, [userId]);
+
+    console.log(result);
     return result.length === 0 ? null : result;
   } catch (error) {
     console.log("CartModel Error", error);
