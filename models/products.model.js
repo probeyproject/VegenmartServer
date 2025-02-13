@@ -53,17 +53,22 @@ export const createProductModal = async (
   stockType,
   stock,
   minWeight,
-  foodPreference
+  foodPreference,
+  quantityDiscounts // Accept quantity discounts as an array [{quantityFrom, quantityTo, discountPercentage}]
 ) => {
+  console.log(quantityDiscounts); // Debugging the received quantityDiscounts array
+  
   try {
+    // Step 1: Insert Product into database
     const query = `
       INSERT INTO product (
-        product_name, product_price, product_details,is_washed, product_description, 
+        product_name, product_price, product_details, is_washed, product_description, 
         weight, store_info, unit, refundable, exchangeable, product_image, 
         product_type, tags, manufacturing_date, expiry_date, sku, status, 
         category_id, subcategory_id, brand_id, discount_price, weight_type, 
         stock_type, stock, min_weight, food_preference
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
     const [result] = await db.query(query, [
       productName,
@@ -94,16 +99,38 @@ export const createProductModal = async (
       foodPreference,
     ]);
 
+    const productId = result.insertId;
+
+    // Step 2: Insert quantity-based discounts into the database
+    if (quantityDiscounts && quantityDiscounts.length > 0) {
+      const discountQuery = `
+        INSERT INTO product_quantity_discounts (product_id, min_quantity, max_quantity, discount_price)
+        VALUES ${quantityDiscounts.map(() => "(?, ?, ?, ?)").join(",")}
+      `;
+
+      const discountValues = quantityDiscounts.flatMap((discount) => [
+        productId,
+        discount.quantityFrom,  // mapped from 'quantityFrom'
+        discount.quantityTo,    // mapped from 'quantityTo'
+        discount.discountPercentage,  // mapped from 'discountPercentage'
+      ]);
+
+      await db.query(discountQuery, discountValues);
+    }
+
+    // Step 3: Fetch the inserted product and return it
     const [rows] = await db.query(
       `SELECT * FROM product WHERE product_id = ?`,
-      [result.insertId]
+      [productId]
     );
-    return rows[0];
+
+    return rows[0]; // Return the created product data
   } catch (error) {
     console.log("Error in createProductModal:", error);
     throw new Error(`Error in createProductModal: ${error.message}`);
   }
 };
+
 
 export const getAllProduct = async (req, res) => {
   try {
@@ -234,93 +261,35 @@ export const getAllProductModal = async () => {
 export const getProductByIdModal = async (productId) => {
   try {
     const query = `
-    SELECT 
-      product.*, 
-      categories.category_name, 
-      subcategories.subcategory_name, 
-      brands.brand_name,
-      is_washed,
-      AVG(reviews.rating) AS average_rating,   -- Fixed the comma here
-      price.price_id,
-      price.min_weight,
-      price.max_weight,
-      price.discount_price AS offer_discount_price
-    FROM 
-      product
-    LEFT JOIN 
-      categories ON product.category_id = categories.category_id
-    LEFT JOIN 
-      subcategories ON product.subcategory_id = subcategories.subcategory_id
-    LEFT JOIN 
-      brands ON product.brand_id = brands.brand_id
-    LEFT JOIN 
-      reviews ON product.product_id = reviews.product_id
-    LEFT JOIN 
-      price ON product.product_id = price.product_id
-    WHERE 
-      product.product_id = ?
-    GROUP BY 
-      product.product_id, 
-      categories.category_name, 
-      subcategories.subcategory_name,
-      brands.brand_name,
-      price.price_id`;
+      SELECT 
+        product.*, 
+        categories.category_name, 
+        subcategories.subcategory_name, 
+        brands.brand_name,
+        is_washed,
+        AVG(reviews.rating) AS average_rating
+      FROM product
+      LEFT JOIN categories ON product.category_id = categories.category_id
+      LEFT JOIN subcategories ON product.subcategory_id = subcategories.subcategory_id
+      LEFT JOIN brands ON product.brand_id = brands.brand_id
+      LEFT JOIN reviews ON product.product_id = reviews.product_id
+      WHERE product.product_id = ?
+      GROUP BY product.product_id, categories.category_name, subcategories.subcategory_name, brands.brand_name`;
 
     const [result] = await db.query(query, [productId]);
 
-    // Assuming result will only contain one product (since it's filtered by ID)
     if (result.length === 0) {
       throw new Error("Product not found");
     }
 
-    // Get the first result since the query fetches a single product
-    const row = result[0];
+    const product = result[0];
 
-    // Construct the product object
-    const product = {
-      product_id: row.product_id,
-      product_name: row.product_name,
-      product_price: row.product_price,
-      product_details: row.product_details,
-      is_washed:row.is_washed,
-      product_description: row.product_description,
-      weight: row.weight,
-      store_info: row.store_info,
-      unit: row.unit,
-      product_image: row.product_image ? row.product_image : [],
-      refundable: row.refundable,
-      exchangeable: row.exchangeable,
-      product_type: row.product_type,
-      tags: row.tags,
-      manufacturing_date: row.manufacturing_date,
-      expiry_date: row.expiry_date,
-      sku: row.sku,
-      status: row.status,
-      subcategory_id: row.subcategory_id,
-      category_id: row.category_id,
-      brand_id: row.brand_id,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      discount_price: row.discount_price,
-      food_preference: row.food_preference,
-      weight_type: row.weight_type,
-      stock_type: row.stock_type,
-      stock: row.stock,
-      category_name: row.category_name,
-      subcategory_name: row.subcategory_name,
-      brand_name: row.brand_name,
-      average_rating: row.average_rating,
-      offers: [], // Initialize offers array
-    };
+    // Fetch quantity-based discounts
+    const discountQuery = `SELECT min_quantity, max_quantity, discount_price FROM product_quantity_discounts WHERE product_id = ?`;
+    const [discounts] = await db.query(discountQuery, [productId]);
 
-    // Add the offer to the product's offers array
-    product.offers.push({
-      min_weight: row.min_weight,
-      max_weight: row.max_weight,
-      discount_price: row.offer_discount_price,
-    });
+    product.quantity_discounts = discounts; // Add quantity discounts to product
 
-    // Return the single product object
     return product;
   } catch (error) {
     throw new Error(`Error in getProductByIdModal: ${error}`);
@@ -380,22 +349,23 @@ export const updateProductModel = async (
   discountPrice,
   weightType,
   stockType,
-  stock
+  stock,
+  quantityDiscounts
 ) => {
   try {
     const query = `
       UPDATE product SET 
-        product_name = ?, product_price = ?, product_details = ?, is_washed = ?,product_description = ?, weight = ?, 
+        product_name = ?, product_price = ?, product_details = ?, is_washed = ?, product_description = ?, weight = ?, 
         store_info = ?, unit = ?, refundable = ?, exchangeable = ?, product_image = ?, product_type = ?, 
         tags = ?, manufacturing_date = ?, expiry_date = ?, sku = ?, status = ?, category_id = ?, subcategory_id = ?, 
-        brand_id = ?, discount_price = ?,weight_type = ?,stock_type = ?, stock = ?
-        WHERE product_id = ?`;
+        brand_id = ?, discount_price = ?, weight_type = ?, stock_type = ?, stock = ?
+      WHERE product_id = ?`;
 
     const productImage = Array.isArray(imageUrls)
       ? JSON.stringify(imageUrls)
       : imageUrls;
 
-    const [result] = await db.query(query, [
+    await db.query(query, [
       productName,
       productPrice,
       productDetails,
@@ -423,7 +393,28 @@ export const updateProductModel = async (
       productId,
     ]);
 
-    // Return the updated product
+    // Delete old quantity discounts
+    await db.query(
+      `DELETE FROM product_quantity_discounts WHERE product_id = ?`,
+      [productId]
+    );
+
+    // Insert new quantity discounts
+    if (quantityDiscounts && quantityDiscounts.length > 0) {
+      const discountQuery = `
+        INSERT INTO product_quantity_discounts (product_id, min_quantity, max_quantity, discount_price)
+        VALUES ?`;
+
+      const discountValues = quantityDiscounts.map((discount) => [
+        productId,
+        discount.min,
+        discount.max,
+        discount.discount,
+      ]);
+
+      await db.query(discountQuery, [discountValues]);
+    }
+
     const [rows] = await db.query(
       `SELECT * FROM product WHERE product_id = ?`,
       [productId]

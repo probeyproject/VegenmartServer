@@ -241,42 +241,41 @@ export const getAllProductByCategoryModel = async () => {
 }
 
 export const getProductByCategoryNameModel = async () => { 
-    try {
-      // Simplified SQL query to fetch products only by category (no subcategory)
-      const query = `
-        WITH RankedProducts AS (
-          SELECT p.product_name, product_id, 
-                 c.category_name,
-                 ROW_NUMBER() OVER (PARTITION BY c.category_name ORDER BY p.product_id) AS rn
-          FROM product p
-          JOIN categories c ON p.category_id = c.category_id
-          WHERE c.category_name IN ('Fresh leafy Vegetables', 'Mushroom', 'Fresh Exotic Vegetables', 'Fresh Regular Vegetables')
-        )
-        SELECT *
-        FROM RankedProducts
-        WHERE rn <= 6;
-      `;
-    
-      // Execute the query
-      const [result] = await db.query(query);
-    
-      // Transform the result into the desired format by category
-      const formattedResult = result.reduce((acc, product) => {
-        const { category_name } = product;
-    
-        if (!acc[category_name]) {
-          acc[category_name] = [];
-        }
-    
-        acc[category_name].push(product);
-        return acc;
-      }, {});
-    
-      // Return the formatted result or null if no categories found
-      return Object.keys(formattedResult).length === 0 ? null : formattedResult;
-    } catch (error) {
-      console.log(error);
-      throw new Error(`Category Model DB error: ${error.message}`);
-    }
-  };
+  try {
+    // Simplified SQL query to fetch products only by category (no subcategory)
+    const query = `
+      WITH RankedProducts AS (
+        SELECT p.product_name, product_id, 
+               c.category_name,
+               ROW_NUMBER() OVER (PARTITION BY c.category_name ORDER BY p.product_id) AS rn
+        FROM product p
+        JOIN categories c ON p.category_id = c.category_id
+        WHERE c.category_name IN ('Leafy Vegetables', 'Mushroom', 'Exotic Vegetables', 'Regular Vegetables','Green Fruit','Yellow Fruit','Citrus Fruit','Tropical Fruit')
+      )
+      SELECT *
+      FROM RankedProducts
+      WHERE rn <= 6;
+    `;
   
+    // Execute the query
+    const [result] = await db.query(query);
+
+    // Transform the result into the desired format by category
+    const formattedResult = result.reduce((acc, product) => {
+      const { category_name } = product;
+  
+      if (!acc[category_name]) {
+        acc[category_name] = [];
+      }
+  
+      acc[category_name].push(product);
+      return acc;
+    }, {});
+  
+    // Return the formatted result or null if no categories found
+    return Object.keys(formattedResult).length === 0 ? null : formattedResult;
+  } catch (error) {
+    console.log(error);
+    throw new Error(`Category Model DB error: ${error.message}`);
+  }
+};
