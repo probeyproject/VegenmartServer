@@ -481,7 +481,7 @@ export const productBanner = async (req, res) => {
     const result = await productBannerModel();
 
     if (!result) {
-      return res.send(400).json({
+      return res.status(400).json({
         status: "error",
         message: "Product is not available",
       });
@@ -490,8 +490,9 @@ export const productBanner = async (req, res) => {
     return res.status(200).json(result);
   } catch (error) {
     console.log(error);
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
   }
 };
