@@ -4,15 +4,17 @@ import {
   getAllCardByUserIdModel,
   getAllCartModel,
   getCardByIdModel,
+  getCartItemByUserAndProduct,
   getCartProductsByUserId,
   getRelatedProducts,
+  updateCartItem,
   updateCartModel,
 } from "../../models/cart.model.js";
 
 export const createCart = async (req, res) => {
   try {
     const { userId } = req.params;
-    const {
+    let {
       productId,
       combo_id,
       totalPrice,
@@ -25,7 +27,7 @@ export const createCart = async (req, res) => {
 
     console.log("Incoming payload:", req.body);
 
-    // Check if userId is provided
+    // Validate userId
     if (!userId) {
       return res
         .status(400)
@@ -34,12 +36,53 @@ export const createCart = async (req, res) => {
 
     // Ensure at least one of productId or combo_id is provided
     if (!productId && !combo_id) {
-      return res.status(400).json({
-        message: "Either productId or combo_id must be provided.",
+      return res
+        .status(400)
+        .json({ message: "Either productId or combo_id must be provided." });
+    }
+
+    // Convert undefined values to null (SQL-friendly)
+    productId = productId || null;
+    combo_id = combo_id || null;
+    totalPrice = totalPrice || 0;
+    quantity = quantity || 1;
+    cartStatus = cartStatus || "active"; // Default status
+    weight = weight || 0;
+    weight_type = weight_type || "kg"; // Example default weight type
+    final_price = final_price || 0;
+
+    // Check if the product already exists in the cart
+    const existingCartItem = await getCartItemByUserAndProduct(
+      userId,
+      productId,
+      combo_id
+    );
+
+    if (existingCartItem) {
+      // If product exists, update quantity, weight, and total price
+      const newQuantity = Number(existingCartItem.quantity) + Number(quantity);
+      const newWeight = Number(existingCartItem.weight) + Number(weight);
+      const newTotalPrice =
+        Number(existingCartItem.totalPrice) + Number(totalPrice);
+
+      const updateResult = await updateCartItem(
+        existingCartItem.cart_id,
+        newQuantity,
+        newWeight,
+        newTotalPrice
+      );
+
+      if (!updateResult) {
+        return res.status(400).json({ message: "Failed to update cart." });
+      }
+
+      return res.status(200).json({
+        message: "Cart updated successfully!",
+        updatedCart: updateResult,
       });
     }
 
-    // Create the cart entry
+    // Create new cart entry
     const result = await createCartModel(
       userId,
       productId,
@@ -52,33 +95,13 @@ export const createCart = async (req, res) => {
       final_price
     );
 
-    // Handle specific error cases
-    if (result.error === "Invalid userId") {
-      return res.status(400).json({
-        message: "Invalid userId. Please provide a valid user ID.",
-      });
-    }
-
-    // if (result.error === "Invalid productId") {
-    //   return res.status(400).json({
-    //     message: "Invalid productId. Please provide a valid product ID."
-    //   });
-    // }
-
-    // if (result.error === "Invalid combo_id") {
-    //   return res.status(400).json({
-    //     message: "Invalid combo_id. Please provide a valid combo ID."
-    //   });
-    // }
-
     if (!result) {
       return res.status(400).json({ message: "Cart not created!" });
     }
 
-    // Success response
     return res.status(201).json({ message: "Cart created successfully!" });
   } catch (error) {
-    console.log("CreateOrder Error", error);
+    console.log("CreateCart Error:", error);
     return res
       .status(500)
       .json({ message: "Internal Server Error", error: error.message });
@@ -167,7 +190,7 @@ export const getCartById = async (req, res) => {
     if (!cartId) {
       return res
         .status(400)
-        .json({ message: "Please Provide Order Id or Invalid" });
+        .json({ message: "Please Provide Cart Id or Invalid" });
     }
 
     const results = await getCardByIdModel(cartId);

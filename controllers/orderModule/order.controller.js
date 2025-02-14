@@ -123,7 +123,7 @@ export const createOrder = async (req, res) => {
       shipping_cost,
     } = req.body;
 
-    console.log(userId);
+    console.log(cupon);
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required!" });

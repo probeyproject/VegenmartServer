@@ -1,5 +1,63 @@
 import db from "../db/db.js";
 
+export const getCartItemByUserAndProduct = async (
+  userId,
+  productId,
+  combo_id
+) => {
+  const query = `
+    SELECT * FROM carts 
+    WHERE user_id = ? 
+    AND (product_id = ? OR ? IS NULL) 
+    AND (combo_id = ? OR ? IS NULL)
+  `;
+
+  const [rows] = await db.execute(query, [
+    userId,
+    productId,
+    productId,
+    combo_id,
+    combo_id,
+  ]);
+
+  return rows.length ? rows[0] : null;
+};
+
+export const updateCartItem = async (cartId, newQuantity, newWeight, newTotalPrice) => {
+  if (!cartId) {
+    console.error("updateCartItem Error: cartId is undefined!");
+    return false;
+  }
+
+  
+
+  // Replace undefined with default values or NULL
+  newQuantity = newQuantity !== undefined ? newQuantity : 1; 
+  newWeight = newWeight !== undefined ? newWeight : 0; 
+  newTotalPrice = newTotalPrice !== undefined ? newTotalPrice : 0; 
+
+  const query = `
+    UPDATE carts 
+    SET quantity = ?, weight = ?, total_price = ? 
+    WHERE cart_id = ?
+  `;
+
+  try {
+    const [result] = await db.execute(query, [
+      newQuantity,
+      newWeight,
+      newTotalPrice,
+      cartId,
+    ]);
+
+    return result.affectedRows > 0;
+  } catch (error) {
+    console.error("updateCartItem SQL Error:", error);
+    return false;
+  }
+};
+
+
 export const createCartModel = async (
   userId,
   productId,

@@ -105,7 +105,7 @@ export const deleteCouponById = async (req, res) => {
 // Validate coupon by code
 export const validateCoupon = async (req, res) => {
   try {
-    const { coupon_code, product_id, user_id, total_price } = req.body;
+    const { coupon_code,coupan_id, product_id, user_id, total_price } = req.body;
 
     const orders = await getOrderByUserIdModel(user_id);
 
@@ -115,6 +115,15 @@ export const validateCoupon = async (req, res) => {
     if (coupon_code === "WELCOME" && !isFirstPurchase) {
       return res.status(400).json({
         message: "WELCOME coupon is valid only for first-time purchases",
+      });
+    }
+
+    const hasUsedCoupon = orders.some((order) => order.cupon === coupan_id);
+    console.log(hasUsedCoupon)
+
+    if (hasUsedCoupon) {
+      return res.status(400).json({
+        message: "This coupon has already been used and cannot be applied again.",
       });
     }
 
