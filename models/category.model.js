@@ -250,7 +250,7 @@ export const getProductByCategoryNameModel = async () => {
                ROW_NUMBER() OVER (PARTITION BY c.category_name ORDER BY p.product_id) AS rn
         FROM product p
         JOIN categories c ON p.category_id = c.category_id
-        WHERE c.category_name IN ('Leafy Vegetables', 'Mushroom', 'Exotic Vegetables', 'Regular Vegetables','Green Fruit','Yellow Fruit','Citrus Fruit','Tropical Fruit')
+        WHERE c.category_name IN ('Leafy Vegetables', 'Mushroom', 'Exotic Vegetables', 'Regular Vegetables','Green Fruit','Citrus Fruit','Tropical Fruit')
       )
       SELECT *
       FROM RankedProducts
