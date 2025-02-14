@@ -12,6 +12,8 @@ import {
   uploadInvoice,
 } from "../controllers/orderModule/order.controller.js";
 
+import upload from "../config/multer.js";
+
 const router = express.Router();
 
 router.post("/create/order/:userId", createOrder);
@@ -22,6 +24,6 @@ router.put("/editOrderById/:orderId", editOrderById);
 router.delete("/deleteOrderById/:orderId", deleteOrderById);
 router.get("/getLatestOrder", getLatestOrder);
 router.get("/getOrderCount", getOrderCount);
-router.post("/upload-invoice", uploadInvoice);
+router.post("/upload-invoice", upload.single("invoice"), uploadInvoice);
 router.patch("/cancel-order", cancelOrderById);
 export default router;

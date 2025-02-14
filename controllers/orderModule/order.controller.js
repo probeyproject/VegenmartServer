@@ -132,7 +132,6 @@ export const createOrder = async (req, res) => {
     // Step 1: Check if user has enough points
     const availablePoints = await getWalletPoints(userId);
 
-
     if (pointsUsed > availablePoints) {
       return res.status(400).json({ message: "Not enough points in wallet" });
     }
@@ -165,7 +164,6 @@ export const createOrder = async (req, res) => {
       await updateProductStock(id, newStock);
     }
 
-
     const orders = await getOrderByUserIdModel(userId);
 
     const isFirstPurchase = (orders?.length || 0) === 0;
@@ -195,7 +193,7 @@ export const createOrder = async (req, res) => {
 
     // Step 5: Update wallet points
 
-    if(isFirstPurchase) await addWalletReward(userId,100)
+    if (isFirstPurchase) await addWalletReward(userId, 100);
 
     const updatedPoints = availablePoints - pointsUsed;
 
@@ -245,38 +243,29 @@ export const createOrder = async (req, res) => {
 
 export const uploadInvoice = async (req, res) => {
   try {
-    const { invoiceBase64, orderId } = req.body;
+    console.log("Received Headers:", req.headers);
+    console.log("Received Body:", req.body);
+    console.log("Received File:", req.file);
 
-    if (!invoiceBase64 || !orderId) {
+    const { orderId, userId } = req.body;
+
+    if (!req.file || !orderId || !userId) {
       return res
         .status(400)
-        .json({ error: "Missing invoiceBase64 or orderId" });
+        .json({ error: "Missing file, orderId, or userId" });
     }
 
-    // Convert Base64 data to a PDF buffer
-    const buffer = Buffer.from(invoiceBase64, "base64");
-    const fileName = `${orderId}_invoice.pdf`;
-    const filePath = path.join("uploads", fileName);
+    const filePath = req.file.path;
 
-    // Ensure 'uploads' directory exists
-    const uploadsDir = path.resolve("uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    // Save the buffer as a local PDF file
-    fs.writeFileSync(filePath, buffer);
-
-    // Upload the PDF to Cloudinary
+    // Upload to Cloudinary
     const uploadedFile = await cloudinary.uploader.upload(filePath, {
       folder: "invoices",
       resource_type: "raw",
     });
 
-    // Delete the local file after successful upload
     fs.unlinkSync(filePath);
 
-    // Save the Cloudinary URL to the database
+    // Save Cloudinary URL to Database
     await updateOrderInvoice(orderId, uploadedFile.secure_url);
 
     res.status(200).json({
@@ -285,10 +274,9 @@ export const uploadInvoice = async (req, res) => {
     });
   } catch (error) {
     console.error("Error uploading invoice:", error);
-    res.status(500).json({
-      message: "Failed to upload invoice",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({ message: "Failed to upload invoice", error: error.message });
   }
 };
 
