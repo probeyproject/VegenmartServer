@@ -67,7 +67,7 @@ export const createCartModel = async (
   cartStatus,
   weight,
   weight_type,
-  final_price
+  
 ) => {
   try {
     // Validate if user exists

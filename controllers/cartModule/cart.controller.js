@@ -22,7 +22,6 @@ export const createCart = async (req, res) => {
       cartStatus,
       weight,
       weight_type,
-      final_price,
     } = req.body;
 
     console.log("Incoming payload:", req.body);
@@ -41,6 +40,8 @@ export const createCart = async (req, res) => {
         .json({ message: "Either productId or combo_id must be provided." });
     }
 
+    console.log(totalPrice);
+
     // Convert undefined values to null (SQL-friendly)
     productId = productId || null;
     combo_id = combo_id || null;
@@ -49,7 +50,7 @@ export const createCart = async (req, res) => {
     cartStatus = cartStatus || "active"; // Default status
     weight = weight || 0;
     weight_type = weight_type || "kg"; // Example default weight type
-    final_price = final_price || 0;
+    // final_price = final_price || 0;
 
     // Check if the product already exists in the cart
     const existingCartItem = await getCartItemByUserAndProduct(
@@ -58,12 +59,14 @@ export const createCart = async (req, res) => {
       combo_id
     );
 
+    console.log(existingCartItem);
+
     if (existingCartItem) {
       // If product exists, update quantity, weight, and total price
       const newQuantity = Number(existingCartItem.quantity) + Number(quantity);
       const newWeight = Number(existingCartItem.weight) + Number(weight);
       const newTotalPrice =
-        Number(existingCartItem.totalPrice) + Number(totalPrice);
+        Number(existingCartItem.total_price) + Number(totalPrice);
 
       const updateResult = await updateCartItem(
         existingCartItem.cart_id,
@@ -91,8 +94,7 @@ export const createCart = async (req, res) => {
       quantity,
       cartStatus,
       weight,
-      weight_type,
-      final_price
+      weight_type
     );
 
     if (!result) {
