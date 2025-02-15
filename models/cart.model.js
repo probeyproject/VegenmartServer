@@ -23,18 +23,21 @@ export const getCartItemByUserAndProduct = async (
   return rows.length ? rows[0] : null;
 };
 
-export const updateCartItem = async (cartId, newQuantity, newWeight, newTotalPrice) => {
+export const updateCartItem = async (
+  cartId,
+  newQuantity,
+  newWeight,
+  newTotalPrice
+) => {
   if (!cartId) {
     console.error("updateCartItem Error: cartId is undefined!");
     return false;
   }
 
-  
-
   // Replace undefined with default values or NULL
-  newQuantity = newQuantity !== undefined ? newQuantity : 1; 
-  newWeight = newWeight !== undefined ? newWeight : 0; 
-  newTotalPrice = newTotalPrice !== undefined ? newTotalPrice : 0; 
+  newQuantity = newQuantity !== undefined ? newQuantity : 1;
+  newWeight = newWeight !== undefined ? newWeight : 0;
+  newTotalPrice = newTotalPrice !== undefined ? newTotalPrice : 0;
 
   const query = `
     UPDATE carts 
@@ -57,7 +60,6 @@ export const updateCartItem = async (cartId, newQuantity, newWeight, newTotalPri
   }
 };
 
-
 export const createCartModel = async (
   userId,
   productId,
@@ -67,7 +69,7 @@ export const createCartModel = async (
   cartStatus,
   weight,
   weight_type,
-  
+  final_price
 ) => {
   try {
     // Validate if user exists
