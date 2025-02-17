@@ -168,7 +168,26 @@ export const createOrder = async (req, res) => {
 
     const isFirstPurchase = (orders?.length || 0) === 0;
 
-    // Step 4: Create the order
+    // Step 4: Update wallet points
+
+    if (isFirstPurchase) await addWalletReward(userId, 100);
+
+    const updatedPoints = availablePoints - pointsUsed;
+
+    await updateWalletPoints(userId, updatedPoints);
+
+    // Retrieve the user's phone number
+
+    // Step 6: Clean up cart
+    await deleteCartByUserIdModel(userId);
+
+    if (totalPrice >= 500) {
+      const newPoints = totalPrice * (10 / 100);
+      const balance = await addWalletReward(userId, newPoints);
+
+      console.log(balance);
+    }
+
     const result = await createOrderModel(
       JSON.stringify(products),
       totalPrice,
@@ -191,14 +210,6 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Order not created!" });
     }
 
-    // Step 5: Update wallet points
-
-    if (isFirstPurchase) await addWalletReward(userId, 100);
-
-    const updatedPoints = availablePoints - pointsUsed;
-
-    await updateWalletPoints(userId, updatedPoints);
-
     const orderId = result.insertId;
 
     // Automatically create a tracking record for this order
@@ -209,8 +220,6 @@ export const createOrder = async (req, res) => {
     };
 
     await createTrackingModel(trackingData); // Create tracking entry
-
-    // Retrieve the user's phone number
     const userPhone = await getUserPhoneById(userId);
     if (!userPhone) {
       return res.status(400).json({ message: "User phone number not found!" });
@@ -218,16 +227,6 @@ export const createOrder = async (req, res) => {
 
     // Send SMS notification to the user
     await sendOrderConfirmationSMS(userPhone, orderId); // Send SMS after order creation
-
-    // Step 6: Clean up cart
-    await deleteCartByUserIdModel(userId);
-
-    if (totalPrice >= 500) {
-      const newPoints = totalPrice * (10 / 100);
-      const balance = await addWalletReward(userId, newPoints);
-
-      console.log(balance);
-    }
 
     return res.status(201).json({
       message: "Order created successfully and tracking initiated.",
@@ -551,5 +550,31 @@ export const cancelOrderById = async (req, res) => {
     return res
       .status(500)
       .json({ error: "Something went wrong while canceling the order" });
+  }
+};
+
+export const pendingOrderCount = async (req, res) => {
+  try {
+    const [result] = await db.execute(
+      "SELECT COUNT(*) AS count FROM orders WHERE order_status = 'Pending'"
+    );
+
+    res.json({ count: result[0].count });
+  } catch (error) {
+    console.error("Error fetching pending orders count:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+export const pendingOrders = async (req, res) => {
+  try {
+    const [result] = await db.execute(
+      "SELECT order_id, user_id, created_at FROM orders WHERE order_status = 'Pending' ORDER BY created_at DESC"
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching pending orders list:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };

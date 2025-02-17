@@ -9,6 +9,8 @@ import {
   getOrderById,
   getOrderByUserId,
   getOrderCount,
+  pendingOrderCount,
+  pendingOrders,
   uploadInvoice,
 } from "../controllers/orderModule/order.controller.js";
 
@@ -26,4 +28,6 @@ router.get("/getLatestOrder", getLatestOrder);
 router.get("/getOrderCount", getOrderCount);
 router.post("/upload-invoice", upload.single("invoice"), uploadInvoice);
 router.patch("/cancel-order", cancelOrderById);
+router.get("/pending-orders-count", pendingOrderCount);
+router.get("/pending-orders", pendingOrders);
 export default router;

@@ -1,10 +1,15 @@
-import { getAllUsersModel, getUserByIdModel, editUserByIdModel, deleteUserByIdModal, getUserCountModel } from "../../models/user.model.js";
+import {
+  getAllUsersModel,
+  getUserByIdModel,
+  editUserByIdModel,
+  deleteUserByIdModal,
+  getUserCountModel,
+} from "../../models/user.model.js";
 import cloudinary from "../../config/cloudinary.js";
 import fs from "fs";
 import path from "path";
 import Jimp from "jimp";
-
-
+import db from "../../db/db.js";
 
 export const getAllUser = async (req, res) => {
   try {
@@ -14,13 +19,14 @@ export const getAllUser = async (req, res) => {
       return res.status(400).json({ message: "User Not Found!" });
     }
 
-    return res.status(200).json(result)
+    return res.status(200).json(result);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
-
 
 export const getUserById = async (req, res) => {
   const userId = req.params.userId;
@@ -39,84 +45,102 @@ export const getUserById = async (req, res) => {
     return res.status(200).json(result);
   } catch (error) {
     console.error(error.message);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
   }
 };
 
-
 export const editUserById = async (req, res) => {
-    const  userId  = req.params.userId;
+  const userId = req.params.userId;
 
-    if (!userId) {
-        return res.status(400).json({ message: "User Id is Required!" });
+  if (!userId) {
+    return res.status(400).json({ message: "User Id is Required!" });
+  }
+
+  const { firstName, middleName, lastName, email, phone } = req.body;
+
+  const profilePic = req.file;
+  let profileUrl;
+
+  try {
+    if (profilePic) {
+      const profileImagePath = profilePic.path;
+      console.log("profileImagePath", profileImagePath);
+      const compressedImagePath = path.join(
+        "compressImage",
+        `${Date.now()}-compressed.jpg`
+      );
+      console.log("compressedImagePath", compressedImagePath);
+
+      // Compress the image using Jimp
+      const image = await Jimp.read(profileImagePath);
+      await image
+        .resize(256, 100) // Resize to width 256px, auto-adjust height
+        .quality(50) // Set JPEG quality to 50%
+        .writeAsync(compressedImagePath); // Save the compressed image
+      // console.log('image', image);
+
+      // Upload to Cloudinary
+      const cloudinaryResult = await cloudinary.uploader.upload(
+        compressedImagePath,
+        {
+          folder: "profile_image",
+          public_id: `${Date.now()}-${path.basename(compressedImagePath)}`, // Unique filename
+        }
+      );
+      // console.log('cloudinaryResult', cloudinaryResult);
+
+      profileUrl = cloudinaryResult.secure_url;
+      // console.log('profileUrl', profileUrl);
+
+      // Delete the local original and compressed files
+      fs.unlinkSync(profileImagePath);
+      fs.unlinkSync(compressedImagePath);
     }
 
-    const { firstName, middleName, lastName, email, phone } = req.body;
-    
-    const profilePic = req.file;
-    let profileUrl;
+    // Update user details in the database
+    const updateResult = await editUserByIdModel(
+      userId,
+      firstName,
+      lastName,
+      middleName,
+      email,
+      profileUrl,
+      phone
+    );
 
-    try {
-        if (profilePic) {
-            const profileImagePath = profilePic.path;
-            console.log('profileImagePath', profileImagePath);
-            const compressedImagePath = path.join("compressImage", `${Date.now()}-compressed.jpg`);
-            console.log('compressedImagePath', compressedImagePath);
-
-            // Compress the image using Jimp
-            const image = await Jimp.read(profileImagePath);
-            await image
-                .resize(256, 100) // Resize to width 256px, auto-adjust height
-                .quality(50) // Set JPEG quality to 50%
-                .writeAsync(compressedImagePath); // Save the compressed image
-                // console.log('image', image);
-
-            // Upload to Cloudinary
-            const cloudinaryResult = await cloudinary.uploader.upload(compressedImagePath, {
-                folder: "profile_image",
-                public_id: `${Date.now()}-${path.basename(compressedImagePath)}`, // Unique filename
-            });
-            // console.log('cloudinaryResult', cloudinaryResult);
-
-            profileUrl = cloudinaryResult.secure_url;
-            // console.log('profileUrl', profileUrl);
-
-            // Delete the local original and compressed files
-            fs.unlinkSync(profileImagePath);
-            fs.unlinkSync(compressedImagePath);
-        }
-
-        // Update user details in the database
-        const updateResult = await editUserByIdModel(userId, firstName, lastName, middleName, email, profileUrl, phone);
-        
-
-        if (updateResult.affectedRows > 0) {
-            return res.status(200).json({ message: "User updated successfully" });
-        } else {
-            return res.status(404).json({ message: "User not found" });
-        }
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    if (updateResult.affectedRows > 0) {
+      return res.status(200).json({ message: "User updated successfully" });
+    } else {
+      return res.status(404).json({ message: "User not found" });
     }
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
 };
 
 export const deleteUserById = async (req, res) => {
-    try {
-        const {userId} = req.params;
+  try {
+    const { userId } = req.params;
 
-        if(!userId) {
-            return res.status(400).json({message : "User Id is Required!"})
-        }
-
-        const result = await deleteUserByIdModal(userId);
-
-        return res.status(200).json({message : 'User Deleted Successfully!'});
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    if (!userId) {
+      return res.status(400).json({ message: "User Id is Required!" });
     }
-}
+
+    const result = await deleteUserByIdModal(userId);
+
+    return res.status(200).json({ message: "User Deleted Successfully!" });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
 
 export const getUserCount = async (req, res) => {
   try {
@@ -126,9 +150,48 @@ export const getUserCount = async (req, res) => {
       return res.status(400).json({ message: "User Not Found!" });
     }
 
-    return res.status(200).json(result)
+    return res.status(200).json(result);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+export const getUserByPhoneNo = async (req, res) => {
+  try {
+    const { phone } = req.query;
+    if (!phone) {
+      return res.status(400).json({ message: "Phone number is required" });
+    }
+
+    // Fetch user details from the database
+    const [userResult] = await db.execute(
+      "SELECT * FROM users WHERE phone = ?",
+      ["+91" + phone]
+    );
+
+    if (userResult.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = userResult[0];
+    console.log(user);
+
+    // Fetch user addresses
+    const [addressResult] = await db.execute(
+      "SELECT * FROM addresses WHERE user_id = ?",
+      [user.id]
+    );
+
+    console.log(addressResult);
+
+    user.addresses = addressResult; // Attach addresses to the user object
+
+    return res.json(user);
+  } catch (error) {
+    console.error("Search User Error:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
