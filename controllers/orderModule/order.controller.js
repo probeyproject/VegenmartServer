@@ -569,7 +569,7 @@ export const pendingOrderCount = async (req, res) => {
 export const pendingOrders = async (req, res) => {
   try {
     const [result] = await db.execute(
-      "SELECT order_id, user_id, created_at FROM orders WHERE order_status = 'Pending' ORDER BY created_at DESC"
+      "SELECT order_id, user_id,product, created_at FROM orders WHERE order_status = 'Pending' ORDER BY created_at DESC"
     );
 
     res.json(result);
