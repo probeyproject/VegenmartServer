@@ -167,10 +167,9 @@ export const getUserByPhoneNo = async (req, res) => {
     }
 
     // Fetch user details from the database
-    const [userResult] = await db.execute(
-      "SELECT * FROM users WHERE phone = ?",
-      ["+91" + phone]
-    );
+    const [userResult] = await db.query("SELECT * FROM users WHERE phone = ?", [
+      "+91" + phone,
+    ]);
 
     if (userResult.length === 0) {
       return res.status(404).json({ message: "User not found" });
@@ -180,7 +179,7 @@ export const getUserByPhoneNo = async (req, res) => {
     console.log(user);
 
     // Fetch user addresses
-    const [addressResult] = await db.execute(
+    const [addressResult] = await db.query(
       "SELECT * FROM addresses WHERE user_id = ?",
       [user.id]
     );

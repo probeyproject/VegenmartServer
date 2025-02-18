@@ -16,6 +16,6 @@ router.get("/getUserById/:userId", getUserById);
 router.put("/editUserById/:userId", upload.single("profilePic"), editUserById);
 router.delete("/deleteUserById/:userId", deleteUserById);
 router.get("/getUserCount", getUserCount);
-router.get("/search", getUserByPhoneNo);
+router.get("/search-phone", getUserByPhoneNo);
 
 export default router;
