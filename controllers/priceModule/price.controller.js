@@ -44,27 +44,30 @@ export const calculatePrice = async (req, res) => {
     const { productId } = req.params;
     const { weight, unitType } = req.body;
 
-    console.log(productId);
-
     console.log(weight, unitType);
 
     if (!productId) {
       return res.status(400).json({ message: "Product Id is required!" });
     }
 
-    // Fetch the product's base price from the product table
+    // Fetch the product's base price
     const product = await fetchProductPrice(productId);
     if (!product) {
       return res.status(404).json({ message: "Product not found!" });
     }
 
-    const basePrice = product.product_price;
+    const basePrice = product.product_price - product.discount_price;
+    console.log(basePrice, product.product_price, product.discount_price);
 
-    // Validate weight and unit type
+    let responseWeight = weight; // Default weight for kg & pcs
+    let finalPrice;
+
     if (unitType === "kg") {
+      // Allowed weight increments for kg
       const allowedWeights = [
-        0.05, 0.1, 0.25, 0.5, 0.75, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-        14, 15,
+        0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65,
+        0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+        12, 13, 14, 15,
       ];
 
       if (!allowedWeights.includes(weight)) {
@@ -74,50 +77,43 @@ export const calculatePrice = async (req, res) => {
         });
       }
 
-      // Calculate total base price based on weight in kg
-      const totalBasePrice = basePrice * weight; // Price for the selected weight (e.g., 0.75kg for 750g)
+      finalPrice = basePrice * weight; // Calculate price for kg
 
-      // Fetch the discount range based on the weight
-      const discountRange = await fetchDiscountRange(productId, weight);
-
-      let finalPrice;
-
-      // If discount exists, apply it; otherwise, return the base price
-      if (discountRange) {
-        const discount = discountRange.discount_price;
-        const discountAmount = (totalBasePrice * discount) / 100; // Apply discount on total base price
-        finalPrice = totalBasePrice - discountAmount;
-      } else {
-        // No discount; return total base price
-        finalPrice = totalBasePrice;
-      }
-
-      // Return the calculated final price
       return res.status(201).json({
         product_id: productId,
-        weight: weight, // Show weight in grams for clarity
+        weight: responseWeight,
         unitType: "kg",
-        base_price: totalBasePrice, // Show the total base price before discount
+        base_price: finalPrice,
         final_price: finalPrice,
-        message: discountRange
-          ? "Discount applied."
-          : "No discount available, base price returned.",
+        message: "Weight updated for kg.",
+      });
+    } else if (unitType === "g" || unitType === "gram") {
+      // Increase grams by the same unit
+      responseWeight = weight;
+      finalPrice = basePrice * (responseWeight / 1000);
+
+      return res.status(201).json({
+        product_id: productId,
+        weight: responseWeight, // Keep in grams
+        unitType: "g", // Keep as grams
+        final_price: finalPrice,
+        message: "Weight updated for grams.",
       });
     } else if (unitType === "pieces") {
-      // No discount for pieces; just return the base price
-      const minPieces = 5; // Minimum 5 pieces
+      const minPieces = 5;
       if (weight < minPieces) {
         return res.status(400).json({
           message: "Minimum purchase is at least 5 pieces.",
         });
       }
 
-      // Return the base price multiplied by the number of pieces
+      finalPrice = basePrice * weight; // No discount for pieces
+
       return res.status(201).json({
         product_id: productId,
         weight: weight,
         unitType: unitType,
-        final_price: basePrice * weight, // No discount applied
+        final_price: finalPrice,
         message: "No discount for pieces, base price applied.",
       });
     } else {

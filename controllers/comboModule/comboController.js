@@ -147,17 +147,20 @@ export const getAllCombosController = async (req, res) => {
 };
 
 export const updateComboController = async (req, res) => {
-  const { id } = req.params;
-  const { product_id, price, title, description } = req.body;
+  const { combo_id } = req.params;
+  const { price, title, description } = req.body;
+
+  console.log(combo_id);
 
   // Validate required fields
-  if (!product_id || !price || !title || !description) {
+  if (!combo_id || !price || !title || !description) {
     return res.status(400).json({ message: "All fields are required!" });
   }
 
   try {
     // Check if images are uploaded
     const uploadedFiles = req.files;
+
     let imageUrls = [];
 
     if (uploadedFiles && uploadedFiles.length > 0) {
@@ -205,11 +208,10 @@ export const updateComboController = async (req, res) => {
 
     // Update combo in the database
     const success = await updateCombo(
-      id,
-      product_id,
+      combo_id,
       price,
       title,
-      imageUrls.join(","),
+      JSON.stringify(imageUrls),
       description
     );
 

@@ -124,27 +124,37 @@ export const getParentComboById = async (id) => {
 
 export const updateCombo = async (
   id,
-  product_id,
   price,
-  product_image,
   title,
+  product_image,
   description
 ) => {
-  const productIdsJson = JSON.stringify(product_id);
+  console.log(product_image);
   try {
+    // Fetch the existing product image if a new one is not provided
+    const [[existingCombo]] = await db.query(
+      `SELECT product_image FROM combos WHERE combo_id = ?`,
+      [id]
+    );
+
     const query = `
       UPDATE combos
-      SET product_id = ?, price = ?, product_image = ?, title = ?, description = ?
-      WHERE id = ?
+      SET 
+        price = ?, 
+        product_image = ?, 
+        title = ?, 
+        description = ?
+      WHERE combo_id = ?
     `;
+
     const [result] = await db.query(query, [
-      productIdsJson,
       price,
-      product_image,
+      product_image || existingCombo.product_image,
       title,
       description,
       id,
     ]);
+
     return result.affectedRows > 0;
   } catch (error) {
     console.error("Database error:", error.message);

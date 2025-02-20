@@ -27,7 +27,7 @@ router.delete("/deleteOrderById/:orderId", deleteOrderById);
 router.get("/getLatestOrder", getLatestOrder);
 router.get("/getOrderCount", getOrderCount);
 router.post("/upload-invoice", upload.single("invoice"), uploadInvoice);
-router.patch("/cancel-order", cancelOrderById);
+router.put("/cancel-order", cancelOrderById);
 router.get("/pending-orders-count", pendingOrderCount);
 router.get("/pending-orders", pendingOrders);
 export default router;

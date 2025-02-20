@@ -100,15 +100,25 @@ export const createProduct = async (req, res) => {
     resizedImages.forEach((filePath) => fs.unlinkSync(filePath));
 
     // Parse discountRanges if it's a string or an array
+
+    console.log(discountRanges);
+
+    
     let quantityDiscounts = [];
     try {
       if (typeof discountRanges === "string") {
-        quantityDiscounts = JSON.parse(discountRanges); // Parse string to array
+        quantityDiscounts = JSON.parse(discountRanges);
       } else if (Array.isArray(discountRanges)) {
-        quantityDiscounts = discountRanges; // If it's already an array, use it directly
-      } else {
-        console.warn("Unexpected discountRanges format:", discountRanges);
+        quantityDiscounts = discountRanges;
       }
+
+      // Validate discountRanges structure
+      quantityDiscounts = quantityDiscounts.filter(
+        (discount) =>
+          discount.quantityFrom &&
+          discount.quantityTo &&
+          discount.discountPercentage !== undefined
+      );
     } catch (error) {
       console.error("Invalid JSON for discountRanges:", discountRanges);
       return res.status(400).json({
@@ -117,6 +127,7 @@ export const createProduct = async (req, res) => {
       });
     }
 
+    console.log(quantityDiscounts);
     // ✅ Create Product
     const result = await createProductModal(
       productName,

@@ -27,14 +27,15 @@ export const createDiscountRangeModel = async (
 // Fetch product price from the product table
 export const fetchProductPrice = async (productId) => {
   try {
-    const query = "SELECT product_price, weight_type FROM product WHERE product_id = ?";
+    const query =
+      "SELECT product_price,discount_price, weight_type FROM product WHERE product_id = ?";
     const [result] = await db.query(query, [productId]);
 
     if (result.length === 0) {
-      return null;  
+      return null;
     }
 
-    return result[0];  
+    return result[0];
   } catch (error) {
     console.log("fetchProductPrice Error", error);
     return null;
@@ -59,7 +60,6 @@ export const fetchDiscountRange = async (productId, weight) => {
     return null;
   }
 };
-
 
 export const getAllDiscountRangeModel = async () => {
   try {
@@ -91,12 +91,11 @@ export const getAllDiscountRangeModel = async () => {
   }
 };
 
-
 export const getDiscountRangeByProductIdModel = async (productId) => {
   try {
     const query = "SELECT *  FROM price WHERE product_id = ?";
-    const [result] = await db.query(query,[productId]);
-    return result.length === 0  ? null : result;  
+    const [result] = await db.query(query, [productId]);
+    return result.length === 0 ? null : result;
   } catch (error) {
     console.log("fetchProductPrice Error", error);
     return null;

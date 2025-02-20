@@ -57,7 +57,7 @@ export const createProductModal = async (
   quantityDiscounts // Accept quantity discounts as an array [{quantityFrom, quantityTo, discountPercentage}]
 ) => {
   console.log(quantityDiscounts); // Debugging the received quantityDiscounts array
-  
+
   try {
     // Step 1: Insert Product into database
     const query = `
@@ -104,15 +104,15 @@ export const createProductModal = async (
     // Step 2: Insert quantity-based discounts into the database
     if (quantityDiscounts && quantityDiscounts.length > 0) {
       const discountQuery = `
-        INSERT INTO product_quantity_discounts (product_id, min_quantity, max_quantity, discount_price)
-        VALUES ${quantityDiscounts.map(() => "(?, ?, ?, ?)").join(",")}
+        INSERT INTO product_quantity_discounts (product_id, min_quantity, max_quantity, discount_percentage)
+        VALUES ${quantityDiscounts.map(() => "(?, ?, ?, ?)").join(", ")}
       `;
 
       const discountValues = quantityDiscounts.flatMap((discount) => [
         productId,
-        discount.quantityFrom,  // mapped from 'quantityFrom'
-        discount.quantityTo,    // mapped from 'quantityTo'
-        discount.discountPercentage,  // mapped from 'discountPercentage'
+        discount.quantityFrom,
+        discount.quantityTo,
+        discount.discountPercentage,
       ]);
 
       await db.query(discountQuery, discountValues);
@@ -130,7 +130,6 @@ export const createProductModal = async (
     throw new Error(`Error in createProductModal: ${error.message}`);
   }
 };
-
 
 export const getAllProduct = async (req, res) => {
   try {

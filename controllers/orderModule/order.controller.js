@@ -324,8 +324,9 @@ export const getOrderById = async (req, res) => {
 export const editOrderById = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status } = req.body;
+    const { status, userId } = req.body;
 
+    console.log(orderId, status, userId);
     if (!orderId) {
       return res
         .status(400)
@@ -477,7 +478,7 @@ const calculateRewardPoints = (totalPrice) => {
 };
 
 export const cancelOrderById = async (req, res) => {
-  const { orderId } = req.body; // Get the orderId and userId from the request body
+  const { orderId } = req.body; 
 
   console.log(orderId);
 

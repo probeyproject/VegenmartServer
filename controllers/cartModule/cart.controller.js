@@ -238,6 +238,7 @@ export const getAllCartByUserId = async (req, res) => {
       unit: cart.weight || "Kg", // Default to "Kg" if no weight
       weight_type: cart.weight_type, // Directly use weight_type from cart
       price: cart.total_price, // Use total_price directly from cart
+      quantity: cart.quantity, // Use total_price directly from cart
     }));
 
     return res.status(200).json(formattedResults);
