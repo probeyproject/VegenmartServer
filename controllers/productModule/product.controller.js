@@ -18,6 +18,7 @@ import {
 } from "../../models/products.model.js";
 import cloudinary from "../../config/cloudinary.js";
 import fs from "fs";
+import db from "../../db/db.js";
 
 export const createProduct = async (req, res) => {
   const {
@@ -103,7 +104,7 @@ export const createProduct = async (req, res) => {
 
     console.log(discountRanges);
 
-    
+
     let quantityDiscounts = [];
     try {
       if (typeof discountRanges === "string") {
@@ -221,6 +222,9 @@ export const getProductByID = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
+
+
 export const getProductsByCategoryId = async (req, res) => {
   try {
     const category_id = req.params.category_id; // Get category ID from request parameters
@@ -507,3 +511,39 @@ export const productBanner = async (req, res) => {
     });
   }
 };
+
+
+
+export const editDiscountRanges= async (req,res)=>{
+  try {
+    const { productId } = req.params;
+    const { discountRanges } = req.body; // Expecting an array of objects
+
+    if (!discountRanges || !Array.isArray(discountRanges)) {
+      return res.status(400).json({ message: "Invalid discountRanges format" });
+    }
+
+    // Delete existing discount ranges for this product
+    await db.query(`DELETE FROM product_quantity_discounts WHERE product_id = ?`, [productId]);
+
+    // Insert updated discount ranges
+    const values = discountRanges.map((range) => [
+      productId,
+      range.quantityFrom,
+      range.quantityTo,
+      range.discountPercentage,
+    ]);
+
+    const query = `
+      INSERT INTO product_quantity_discounts (product_id, min_quantity, max_quantity, discount_percentage)
+      VALUES ?
+    `;
+
+    await db.query(query, [values]);
+
+    return res.status(200).json({ message: "Discount ranges updated successfully!" });
+  } catch (error) {
+    console.error("Error updating discount ranges:", error);
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+}

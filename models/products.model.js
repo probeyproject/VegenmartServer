@@ -175,7 +175,14 @@ export const getAllProductModal = async () => {
         price.price_id,
         price.min_weight,
         price.max_weight,
-        price.discount_price AS offer_discount_price
+        price.discount_price AS offer_discount_price,
+        JSON_ARRAYAGG(
+          DISTINCT JSON_OBJECT(
+            'quantityFrom', product_quantity_discounts.min_quantity,
+            'quantityTo', product_quantity_discounts.max_quantity,
+            'discountPercentage', product_quantity_discounts.discount_percentage
+          )
+        ) AS discountRanges
       FROM 
         product
       LEFT JOIN 
@@ -188,13 +195,14 @@ export const getAllProductModal = async () => {
         reviews ON product.product_id = reviews.product_id
       LEFT JOIN 
         price ON product.product_id = price.product_id
+      LEFT JOIN 
+        product_quantity_discounts ON product.product_id = product_quantity_discounts.product_id
       GROUP BY 
         product.product_id, 
         categories.category_name, 
         subcategories.subcategory_name, 
         brands.brand_name, 
         price.price_id
-      
     `;
 
     const [result] = await db.query(query);
@@ -239,15 +247,18 @@ export const getAllProductModal = async () => {
           brand_name: row.brand_name,
           average_rating: row.average_rating,
           offers: [], // Initialize offers array
+          discountRanges: row.discountRanges ? JSON.parse(row.discountRanges) : [], // Parse discountRanges
         };
       }
 
       // Add the offer to the product's offers array
-      products[row.product_id].offers.push({
-        min_weight: row.min_weight,
-        max_weight: row.max_weight,
-        discount_price: row.offer_discount_price,
-      });
+      if (row.min_weight && row.max_weight) {
+        products[row.product_id].offers.push({
+          min_weight: row.min_weight,
+          max_weight: row.max_weight,
+          discount_price: row.offer_discount_price,
+        });
+      }
     });
 
     // Convert products object to an array and return
@@ -256,6 +267,7 @@ export const getAllProductModal = async () => {
     throw new Error(`Error in getAllProductModal: ${error}`);
   }
 };
+
 
 export const getProductByIdModal = async (productId) => {
   try {
@@ -266,14 +278,23 @@ export const getProductByIdModal = async (productId) => {
         subcategories.subcategory_name, 
         brands.brand_name,
         is_washed,
-        AVG(reviews.rating) AS average_rating
+        AVG(reviews.rating) AS average_rating,
+        JSON_ARRAYAGG(
+         DISTINCT JSON_OBJECT(
+            'quantityFrom', product_quantity_discounts.min_quantity,
+            'quantityTo', product_quantity_discounts.max_quantity,
+            'discountPercentage', product_quantity_discounts.discount_percentage
+          )
+        ) AS discountRanges
       FROM product
       LEFT JOIN categories ON product.category_id = categories.category_id
       LEFT JOIN subcategories ON product.subcategory_id = subcategories.subcategory_id
       LEFT JOIN brands ON product.brand_id = brands.brand_id
       LEFT JOIN reviews ON product.product_id = reviews.product_id
+      LEFT JOIN product_quantity_discounts ON product.product_id = product_quantity_discounts.product_id
       WHERE product.product_id = ?
-      GROUP BY product.product_id, categories.category_name, subcategories.subcategory_name, brands.brand_name`;
+      GROUP BY product.product_id, categories.category_name, subcategories.subcategory_name, brands.brand_name
+    `;
 
     const [result] = await db.query(query, [productId]);
 
@@ -281,17 +302,15 @@ export const getProductByIdModal = async (productId) => {
       throw new Error("Product not found");
     }
 
+    // Parse JSON discount ranges properly
     const product = result[0];
-
-    // Fetch quantity-based discounts
-    const discountQuery = `SELECT min_quantity, max_quantity, discount_price FROM product_quantity_discounts WHERE product_id = ?`;
-    const [discounts] = await db.query(discountQuery, [productId]);
-
-    product.quantity_discounts = discounts; // Add quantity discounts to product
+    product.discountRanges = product.discountRanges
+      ? JSON.parse(product.discountRanges)
+      : [];
 
     return product;
   } catch (error) {
-    throw new Error(`Error in getProductByIdModal: ${error}`);
+    throw new Error(`Error in getProductByIdModal: ${error.message}`);
   }
 };
 
@@ -798,3 +817,5 @@ export const productBannerModel = async () => {
     throw new Error(`Error in productBannerModel: ${error.message}`);
   }
 };
+
+

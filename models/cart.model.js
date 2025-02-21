@@ -333,7 +333,14 @@ export const getRelatedProducts = async (categories, userId) => {
         pr.price_id,
         pr.min_weight,
         pr.max_weight,
-        pr.discount_price AS offer_discount_price
+        pr.discount_price AS offer_discount_price,
+        JSON_ARRAYAGG(
+          DISTINCT JSON_OBJECT(
+            'quantityFrom', d.min_quantity,
+            'quantityTo', d.max_quantity,
+            'discountPercentage', d.discount_percentage
+          )
+        ) AS discountRanges
       FROM 
         product p
       JOIN 
@@ -342,6 +349,8 @@ export const getRelatedProducts = async (categories, userId) => {
         reviews r ON p.product_id = r.product_id
       LEFT JOIN 
         price pr ON p.product_id = pr.product_id
+      LEFT JOIN 
+        product_quantity_discounts d ON p.product_id = d.product_id
       LEFT JOIN 
         wishlist w ON p.product_id = w.product_id AND w.user_id = ? 
       WHERE 
@@ -377,15 +386,20 @@ export const getRelatedProducts = async (categories, userId) => {
           category_name: row.category_name,
           average_rating: row.average_rating,
           offers: [],
+          discountRanges: row.discountRanges
+            ? JSON.parse(row.discountRanges)
+            : [], // Parse discountRanges
         };
       }
 
       // Add the offer to the product's offers array
-      products[row.product_id].offers.push({
-        min_weight: row.min_weight,
-        max_weight: row.max_weight,
-        discount_price: row.offer_discount_price,
-      });
+      if (row.min_weight && row.max_weight) {
+        products[row.product_id].offers.push({
+          min_weight: row.min_weight,
+          max_weight: row.max_weight,
+          discount_price: row.offer_discount_price,
+        });
+      }
     });
 
     // Convert the products object to an array and return

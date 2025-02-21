@@ -15,11 +15,21 @@ export const getAllProductByFilterModel = async (filter) => {
     } = filter;
 
     let query = `
-            SELECT product.*, categories.category_name
-            FROM product
-            JOIN categories ON product.category_id = categories.category_id
-            WHERE 1=1
-        `;
+      SELECT 
+        product.*, 
+        categories.category_name,
+        JSON_ARRAYAGG(
+          DISTINCT JSON_OBJECT(
+            'quantityFrom', product_quantity_discounts.min_quantity,
+            'quantityTo', product_quantity_discounts.max_quantity,
+            'discountPercentage', product_quantity_discounts.discount_percentage
+          )
+        ) AS discountRanges
+      FROM product
+      JOIN categories ON product.category_id = categories.category_id
+      LEFT JOIN product_quantity_discounts ON product.product_id = product_quantity_discounts.product_id
+      WHERE 1=1
+    `;
 
     let queryParams = [];
 
@@ -54,15 +64,25 @@ export const getAllProductByFilterModel = async (filter) => {
       query += ` AND product.food_preference = ?`;
     }
 
+    query += `
+      GROUP BY product.product_id, categories.category_name
+      LIMIT ? OFFSET ?
+    `;
+
     // Apply pagination: limit the number of results and calculate offset
     const offset = (page - 1) * limit;
-    query += ` LIMIT ? OFFSET ?`;
     queryParams.push(limit, offset);
 
     // Execute the query
     const [results] = await db.query(query, queryParams);
 
-    return results;
+    // Process results to ensure `discountRanges` is parsed correctly
+    return results.map((product) => ({
+      ...product,
+      discountRanges: product.discountRanges
+        ? JSON.parse(product.discountRanges)
+        : [],
+    }));
   } catch (error) {
     console.log("Database Query Error:", error);
     throw new Error(`Filter Model DB error: ${error.message}`);
@@ -86,13 +106,22 @@ export const searchProductsModel = async (searchTerm) => {
           pr.price_id,
           pr.min_weight,
           pr.max_weight,
-          pr.discount_price AS offer_discount_price
+          pr.discount_price AS offer_discount_price,
+          JSON_ARRAYAGG(
+            DISTINCT JSON_OBJECT(
+              'quantityFrom', d.min_quantity,
+              'quantityTo', d.max_quantity,
+              'discountPercentage', d.discount_percentage
+            )
+          ) AS discountRanges
         FROM 
           product p
         LEFT JOIN 
           reviews r ON p.product_id = r.product_id
         LEFT JOIN 
           price pr ON p.product_id = pr.product_id
+        LEFT JOIN 
+          product_quantity_discounts d ON p.product_id = d.product_id
         WHERE 
           p.product_name LIKE ? 
           OR p.product_description LIKE ?
@@ -126,15 +155,18 @@ export const searchProductsModel = async (searchTerm) => {
           stock: row.stock,
           average_rating: row.average_rating,
           offers: [],
+          discountRanges: row.discountRanges ? JSON.parse(row.discountRanges) : [], // Parse discountRanges
         };
       }
 
       // Add the offer to the product's offers array
-      products[row.product_id].offers.push({
-        min_weight: row.min_weight,
-        max_weight: row.max_weight,
-        discount_price: row.offer_discount_price,
-      });
+      if (row.min_weight && row.max_weight) {
+        products[row.product_id].offers.push({
+          min_weight: row.min_weight,
+          max_weight: row.max_weight,
+          discount_price: row.offer_discount_price,
+        });
+      }
     });
 
     // Convert the products object to an array and return
@@ -144,3 +176,4 @@ export const searchProductsModel = async (searchTerm) => {
     throw new Error(`Filter Model DB error: ${error.message}`);
   }
 };
+

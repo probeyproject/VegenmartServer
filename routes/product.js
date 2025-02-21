@@ -1,6 +1,7 @@
 import express from "express";
 import upload from "../config/multer.js";
-import { comboVegitables, createProduct, deleteProductById, editProductById, freshRegularVegitables, getAllProduct, getProductByID, getProductCount, getSimilarProduct, getTrendingProduct, productBanner,getProductsByCategoryId } from "../controllers/productModule/product.controller.js";
+import { comboVegitables, createProduct, deleteProductById, editProductById, freshRegularVegitables, getAllProduct, getProductByID, getProductCount, getSimilarProduct, getTrendingProduct, productBanner,getProductsByCategoryId, editDiscountRanges } from "../controllers/productModule/product.controller.js";
+
 
 
 const router = express.Router();
@@ -17,5 +18,6 @@ router.get('/simillar-product/:productId', getSimilarProduct);
 router.get('/fresh-regular-vegitables', freshRegularVegitables);
 router.get('/combo-vegitables', comboVegitables);
 router.get('/product-banner', productBanner);
+router.put('/productRangesUpdate/:productId',editDiscountRanges)
 
 export default router;

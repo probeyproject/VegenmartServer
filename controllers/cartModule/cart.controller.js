@@ -231,7 +231,8 @@ export const getAllCartByUserId = async (req, res) => {
     // Map the results to match the frontend structure
     const formattedResults = results.map((cart) => ({
       cart_id: cart.cart_id, // Include cart_id
-      id: cart.product_id || cart.combo_id, // Use product_id or combo_id
+      product_id: cart.product_id ,
+      combo_id :cart.combo_id, // Use product_id or combo_id
       product_name: cart.product_name || cart.combo_title, // Either product_name or combo_title
       product_image: cart.product_image || cart.combo_image, // Either product_image or combo_image
       product_price: cart.product_price || cart.combo_price, // Either product_price or combo_price
