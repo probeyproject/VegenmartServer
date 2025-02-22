@@ -49,12 +49,13 @@ export const getCategoryByIdModel = async (categoryId) => {
           product.discount_price, 
           product.weight_type,
           product.stock, 
+          COALESCE(product.min_weight, 0) AS min_weight,  -- Fix for null values
           AVG(reviews.rating) AS average_rating,
-          price.min_weight,
-          price.max_weight,
-          price.discount_price AS offer_discount_price,
+          COALESCE(price.min_weight, 0) AS price_min_weight, -- Fix for null values
+          COALESCE(price.max_weight, 0) AS max_weight, 
+          COALESCE(price.discount_price, 0) AS offer_discount_price,
           JSON_ARRAYAGG(
-          DISTINCT  JSON_OBJECT(
+            DISTINCT JSON_OBJECT(
               'quantityFrom', product_quantity_discounts.min_quantity,
               'quantityTo', product_quantity_discounts.max_quantity,
               'discountPercentage', product_quantity_discounts.discount_percentage
@@ -83,6 +84,8 @@ export const getCategoryByIdModel = async (categoryId) => {
 
     const [result] = await db.query(query, [categoryId]);
 
+    console.log(result);
+
     // Process the result to group price offers by product
     const products = {};
 
@@ -99,6 +102,7 @@ export const getCategoryByIdModel = async (categoryId) => {
           discount_price: row.discount_price,
           weight_type: row.weight_type,
           stock: row.stock,
+          min_weight: row.min_weight || row.price_min_weight, // Ensure min_weight is set correctly
           average_rating: row.average_rating,
           offers: [], // Initialize offers array
           discountRanges: row.discountRanges
@@ -108,9 +112,9 @@ export const getCategoryByIdModel = async (categoryId) => {
       }
 
       // Add the offer to the product's offers array
-      if (row.min_weight && row.max_weight) {
+      if (row.price_min_weight && row.max_weight) {
         products[row.product_id].offers.push({
-          min_weight: row.min_weight,
+          min_weight: row.price_min_weight,
           max_weight: row.max_weight,
           discount_price: row.offer_discount_price,
         });
@@ -139,17 +143,20 @@ export const getCategoryBynameModel = async (categoryName) => {
           product.discount_price, 
           product.weight_type,
           product.stock, 
+          COALESCE(product.min_weight, 0) AS min_weight,  -- Fix for NULL values
           AVG(reviews.rating) AS average_rating,
-          price.min_weight,
-          price.max_weight,
-          price.discount_price AS offer_discount_price,
+          COALESCE(price.min_weight, 0) AS price_min_weight, -- Fix for NULL values
+          COALESCE(price.max_weight, 0) AS max_weight, 
+          COALESCE(price.discount_price, 0) AS offer_discount_price,
           categories.category_name,
-          JSON_ARRAYAGG(
-            DISTINCT JSON_OBJECT(
-              'quantityFrom', product_quantity_discounts.min_quantity,
-              'quantityTo', product_quantity_discounts.max_quantity,
-              'discountPercentage', product_quantity_discounts.discount_percentage
-            )
+          IFNULL(
+            JSON_ARRAYAGG(
+              DISTINCT JSON_OBJECT(
+                'quantityFrom', product_quantity_discounts.min_quantity,
+                'quantityTo', product_quantity_discounts.max_quantity,
+                'discountPercentage', product_quantity_discounts.discount_percentage
+              )
+            ), '[]'
           ) AS discountRanges
         FROM 
           product
@@ -165,8 +172,7 @@ export const getCategoryBynameModel = async (categoryName) => {
           categories.category_name = ?  -- Filter by category name
         GROUP BY 
           product.product_id, 
-          categories.category_name, 
-          price.price_id
+          categories.category_name
         LIMIT 15;
       `;
 
@@ -191,6 +197,10 @@ export const getCategoryBynameModel = async (categoryName) => {
           stock: row.stock,
           category_name: row.category_name,
           average_rating: row.average_rating,
+
+          // Ensure min_weight is correctly assigned
+          min_weight: row.min_weight || row.price_min_weight,
+
           offers: [], // Initialize offers array
           discountRanges: row.discountRanges
             ? JSON.parse(row.discountRanges)
@@ -199,9 +209,9 @@ export const getCategoryBynameModel = async (categoryName) => {
       }
 
       // Add the offer to the product's offers array
-      if (row.min_weight && row.max_weight) {
+      if (row.price_min_weight && row.max_weight) {
         products[row.product_id].offers.push({
-          min_weight: row.min_weight,
+          min_weight: row.price_min_weight,
           max_weight: row.max_weight,
           discount_price: row.offer_discount_price,
         });

@@ -44,6 +44,8 @@ export const calculatePrice = async (req, res) => {
     const { productId } = req.params;
     const { weight, unitType } = req.body;
 
+    console.log(productId)
+
     console.log(weight, unitType);
 
     if (!productId) {

@@ -28,72 +28,66 @@ export const getAllWishlistModel = async (userId) => {
   try {
     const query = `
       SELECT 
-        wishlist.wishlist_id,
-        wishlist.user_id,
-        wishlist.product_id,
-        product.product_id,
-        product.product_name,
-        product.product_price,
-        product.weight,
-        product.product_image,
-        product.product_type,
-        product.status,
-        product.category_id,
-        product.brand_id,
-        product.discount_price,
-        product.weight_type,
-        product.stock_type,
-        product.stock,
-        product.food_preference,
-        categories.category_name,
-        AVG(reviews.rating) AS average_rating,
-        price.price_id,
-        price.min_weight,
-        price.max_weight,
-        price.discount_price AS offer_discount_price,
-        JSON_ARRAYAGG(
-          DISTINCT JSON_OBJECT(
-            'quantityFrom', product_quantity_discounts.min_quantity,
-            'quantityTo', product_quantity_discounts.max_quantity,
-            'discountPercentage', product_quantity_discounts.discount_percentage
-          )
+        w.wishlist_id,
+        w.user_id,
+        w.product_id,
+        p.product_id,
+        p.product_name,
+        p.product_price,
+        p.weight,
+        p.product_image,
+        p.product_type,
+        p.status,
+        p.category_id,
+        p.brand_id,
+        p.discount_price,
+        p.weight_type,
+        p.stock_type,
+        p.stock,
+        p.food_preference,
+        p.min_weight,  -- ✅ Fetching min_weight from product table
+        c.category_name,
+        AVG(r.rating) AS average_rating,
+        pr.price_id,
+        pr.max_weight,
+        pr.discount_price AS offer_discount_price,
+        COALESCE(
+          JSON_ARRAYAGG(
+            DISTINCT JSON_OBJECT(
+              'quantityFrom', qd.min_quantity,
+              'quantityTo', qd.max_quantity,
+              'discountPercentage', qd.discount_percentage
+            )
+          ),
+          JSON_ARRAY()
         ) AS discountRanges
       FROM 
-        wishlist
+        wishlist w
       LEFT JOIN 
-        product ON wishlist.product_id = product.product_id
+        product p ON w.product_id = p.product_id
       LEFT JOIN 
-        categories ON product.category_id = categories.category_id
+        categories c ON p.category_id = c.category_id
       LEFT JOIN 
-        subcategories ON product.subcategory_id = subcategories.subcategory_id
+        reviews r ON p.product_id = r.product_id
       LEFT JOIN 
-        brands ON product.brand_id = brands.brand_id
+        price pr ON p.product_id = pr.product_id
       LEFT JOIN 
-        reviews ON product.product_id = reviews.product_id
-      LEFT JOIN 
-        price ON product.product_id = price.product_id
-      LEFT JOIN 
-        product_quantity_discounts ON product.product_id = product_quantity_discounts.product_id
+        product_quantity_discounts qd ON p.product_id = qd.product_id
       WHERE 
-        wishlist.user_id = ?
+        w.user_id = ?
       GROUP BY 
-        wishlist.wishlist_id,
-        wishlist.user_id,
-        wishlist.product_id,
-        product.product_id,
-        categories.category_name,
-        subcategories.subcategory_name,
-        brands.brand_name,
-        price.price_id
+        w.wishlist_id,
+        p.product_id,
+        c.category_name,
+        pr.price_id
     `;
 
     const [result] = await db.query(query, [userId]);
 
-    // Process the result to group products and embed wishlist data directly into each product
+    // Process the result to structure data properly
     const products = {};
 
     result.forEach((row) => {
-      // If product is not already in the products object, add it
       if (!products[row.product_id]) {
         products[row.product_id] = {
           product_id: row.product_id,
@@ -111,20 +105,18 @@ export const getAllWishlistModel = async (userId) => {
           stock: row.stock,
           food_preference: row.food_preference,
           category_name: row.category_name,
-          subcategory_name: row.subcategory_name,
-          brand_name: row.brand_name,
+          min_weight: row.min_weight || 0, // ✅ Ensuring it's always a valid number
           average_rating: row.average_rating,
           offers: [],
           discountRanges: row.discountRanges
             ? JSON.parse(row.discountRanges)
-            : [], // Parse discountRanges
-          // Add wishlist data directly into the product object
+            : [],
           wishlist_id: row.wishlist_id,
           wishlist_user_id: row.user_id,
         };
       }
 
-      // Add the offer to the product's offers array
+      // Add offers only if valid
       if (row.min_weight && row.max_weight) {
         products[row.product_id].offers.push({
           min_weight: row.min_weight,
@@ -134,7 +126,7 @@ export const getAllWishlistModel = async (userId) => {
       }
     });
 
-    // Convert the products object to an array and return
+    // Convert products object to an array and return
     return Object.values(products);
   } catch (error) {
     console.error("Wishlist Model Error:", error);
