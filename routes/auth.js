@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  addUser,
   googleLogin,
   sendOtp,
   signUp,
@@ -32,6 +33,8 @@ router.post("/google-login", googleLogin);
 router.post("/forgot-password", forgetPassword);
 router.post("/verify-reset-otp", verifyResetOtp);
 router.post("/reset-password", resetPassword);
+
+router.post("/add-user", addUser);
 // rewards
 // router.get('/getRefrelByUserId', getRefrelByUserId);
 

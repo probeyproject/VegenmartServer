@@ -492,3 +492,47 @@ export const googleLogin = async (req, res) => {
       .json({ error: "Failed to authenticate with Google" });
   }
 };
+
+export const addUser = async (req, res) => {
+  let { phone } = req.body;
+
+  if (!phone) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Phone number is required" });
+  }
+
+  const COUNTRY_CODE = "+91";
+  if (!phone.startsWith(COUNTRY_CODE)) {
+    phone = COUNTRY_CODE + phone;
+  }
+
+  try {
+    // Check if user already exists
+    const checkUserSQL = "SELECT id FROM users WHERE phone = ?";
+
+    const [result] = await db.query(checkUserSQL, [phone]);
+
+    if (result.length > 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Phone number already exists" });
+    }
+
+    const [newUser] = await db.query("INSERT INTO users (phone) VALUES (?)", [
+      phone,
+    ]);
+
+
+
+    return res.status(201).json({
+      success: true,
+      message: "User added successfully",
+      user: { id: newUser.insertId, phone },
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error });
+  }
+};
