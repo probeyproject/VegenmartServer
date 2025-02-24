@@ -181,13 +181,6 @@ export const createOrder = async (req, res) => {
     // Step 6: Clean up cart
     await deleteCartByUserIdModel(userId);
 
-    if (totalPrice >= 500) {
-      const newPoints = totalPrice * (10 / 100);
-      const balance = await addWalletReward(userId, newPoints);
-
-      console.log(balance);
-    }
-
     const result = await createOrderModel(
       JSON.stringify(products),
       totalPrice,
@@ -356,11 +349,7 @@ export const editOrderById = async (req, res) => {
 
     const { user_id, total_price } = orderDetails[0];
 
-    // Calculate the reward points dynamically (e.g., based on order value)
-    const rewardPoints = calculateRewardPoints(total_price);
-
-    // Add reward points to the user's wallet
-    await addWalletReward(user_id, rewardPoints); // Add points to the user's wallet
+    
 
     // Retrieve the user's phone number
     const userPhone = await getUserPhoneById(userId);
@@ -369,8 +358,18 @@ export const editOrderById = async (req, res) => {
     }
 
     // Add reward points to the user's wallet
-    await sendOrderConfirmationSMS(userPhone, orderId, rewardPoints);
 
+    const order = await getOrderByIdModel(orderId);
+
+    let rewardPoints;
+    if (order.total_price >= 500) {
+      const newPoints = order.total_price * (10 / 100);
+
+      const balance = await addWalletReward(userId, newPoints);
+      rewardPoints = newPoints;
+      console.log(balance);
+    }
+    await sendOrderConfirmationSMS(userPhone, orderId, rewardPoints);
     return res.status(200).json({
       message: `Order delivered successfully. ${rewardPoints} points awarded.`,
       userId: user_id,
@@ -471,14 +470,9 @@ export const getOrderCount = async (req, res) => {
 };
 
 // functions
-const calculateRewardPoints = (totalPrice) => {
-  // Example: 1 point for every 100 INR spent (this can be customized)
-  const points = Math.floor(totalPrice / 100); // Round down to the nearest integer
-  return points; // You can customize this logic further
-};
 
 export const cancelOrderById = async (req, res) => {
-  const { orderId } = req.body; 
+  const { orderId } = req.body;
 
   console.log(orderId);
 
